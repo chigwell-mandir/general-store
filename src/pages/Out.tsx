@@ -53,6 +53,8 @@ export function OutPage() {
   const folds = useFolds(false)
   const [q, setQ] = useState('')
   const [overdueOnly, setOverdueOnly] = useState(false)
+  const [view, setView] = useState<'lead' | 'person'>('lead')
+  const searching = q.trim().length > 0
 
   const issues = useMemo(() => {
     const words = normalise(q).split(' ').filter(Boolean)
@@ -61,7 +63,8 @@ export function OutPage() {
       if (!words.length) return true
       const v = d.volById.get(i.volunteer_id)
       const it = d.itemById.get(i.item_id)
-      const hay = normalise(`${v?.full_name} ${v?.satsang_id ?? ''} ${it ? itemLabel(it) : ''} ${i.unit_wt_no ?? ''} ${d.zoneLeadForIssue(i).lead?.name ?? ''}`)
+      const forName = i.for_volunteer_id ? d.volById.get(i.for_volunteer_id)?.full_name : ''
+      const hay = normalise(`${v?.full_name} ${v?.satsang_id ?? ''} ${v?.department ?? ''} ${forName} ${it ? itemLabel(it) : ''} ${i.unit_wt_no ?? ''} ${d.zoneLeadForIssue(i).lead?.name ?? ''}`)
       return words.every((w) => hay.includes(w))
     })
   }, [d, q, overdueOnly, now])
@@ -85,16 +88,35 @@ export function OutPage() {
         )}
       </div>
 
-      <input className="input" placeholder="Filter by name, item, WT no. or lead" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter" />
-      <div className="between">
-        <label className="check"><input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} /> Overdue only{overdue > 0 && ` (${overdue})`}</label>
-        <FoldAll keys={groups.map((g) => g.key)} folds={folds} />
+      <input className="input" placeholder="Search anyone — name, SID, item, WT no. or lead" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
+      <div className="between" style={{ flexWrap: 'wrap' }}>
+        <div className="seg" role="group" aria-label="Show">
+          <button aria-pressed={view === 'lead'} onClick={() => setView('lead')}>By zone lead</button>
+          <button aria-pressed={view === 'person'} onClick={() => setView('person')}>By person</button>
+        </div>
+        <label className="check"><input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} /> Overdue{overdue > 0 && ` (${overdue})`}</label>
       </div>
+      {view === 'lead' && !searching && groups.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginTop: -8 }}><FoldAll keys={groups.map((g) => g.key)} folds={folds} /></div>}
 
       {groups.length === 0 && <p className="subtle center" style={{ padding: 32 }}>{d.outstanding.length ? 'Nothing matches.' : 'Everything is back.'}</p>}
 
-      {groups.map((g) => (
-        <FoldCard key={g.key} open={folds.isOpen(g.key)} onToggle={() => folds.toggle(g.key)}
+      {view === 'person' && issues.length > 0 && (
+        <section className="card">
+          {byPerson(issues)
+            .sort(([a], [b]) => (d.volById.get(a)?.full_name ?? '').localeCompare(d.volById.get(b)?.full_name ?? ''))
+            .map(([vid, list]) => (
+              <div key={vid} className="member">
+                <a href={`#/?p=${vid}`} className="member-name">
+                  {d.volById.get(vid)?.full_name ?? 'Unknown'} <span className="subtle" style={{ fontWeight: 500 }}>· {d.zoneLeadForIssue(list[0]).lead?.name ?? 'no zone lead'}</span>
+                </a>
+                <ul className="list">{list.map((i) => <li key={i.id}><IssueRow issue={i} now={now} /></li>)}</ul>
+              </div>
+            ))}
+        </section>
+      )}
+
+      {view === 'lead' && groups.map((g) => (
+        <FoldCard key={g.key} open={searching || folds.isOpen(g.key)} onToggle={() => folds.toggle(g.key)}
           title={<h3>{g.lead}</h3>} count={g.issues.reduce((n, i) => n + d.outQty(i), 0)}
           actions={<button className="icon-btn" onClick={() => copy(`${header}\n\n${leadText(g, d)}`, g.lead)} aria-label={`Copy ${g.lead}’s list for WhatsApp`}><Copy /></button>}>
           {byPerson(g.issues).map(([vid, list]) => (

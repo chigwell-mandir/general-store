@@ -1,20 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { LogIn, LogOut, Undo2, UserCheck } from 'lucide-react'
+import { LogIn, LogOut, Undo2 } from 'lucide-react'
 import type { Volunteer } from '../types'
 import { useStore } from '../lib/store'
 import { clock, when } from '../lib/time'
 import { normalise } from '../lib/search'
-import { PersonSearch } from '../components/PersonSearch'
+import { AddPersonSheet } from '../components/AddPersonSheet'
 import { PersonCard } from '../components/PersonCard'
-import { Avatar, Empty, useAction } from '../components/ui'
+import { FoldAll, FoldCard, useAction, useFolds } from '../components/ui'
 
 /** On-the-day karyakar (KK) registration: check in on arrival, check out when leaving. Separate from kit. */
 export function CheckinPage() {
   const { d, data, act } = useStore()
   const { busy, run } = useAction()
   const [person, setPerson] = useState<Volunteer | null>(null)
-  const [tab, setTab] = useState<'in' | 'out' | 'all'>('in')
 
   const checkins = useMemo(() => [...data.checkins].sort((a, b) => b.checked_in_at.localeCompare(a.checked_in_at)), [data.checkins])
   const onSite = checkins.filter((c) => !c.checked_out_at)
@@ -23,11 +22,6 @@ export function CheckinPage() {
     .sort((a, b) => b.checked_out_at!.localeCompare(a.checked_out_at!))
   const c = person ? d.checkinByVol.get(person.id) : undefined
   const first = (v: Volunteer) => v.full_name.split(' ')[0]
-  const statusBadge = (v: Volunteer) => {
-    const ci = d.checkinByVol.get(v.id)
-    if (!ci) return null
-    return ci.checked_out_at ? <span className="badge">Checked out</span> : <span className="badge badge-ok">Checked in</span>
-  }
 
   return (
     <main className="page page-narrow">
@@ -39,9 +33,7 @@ export function CheckinPage() {
       </div>
 
 
-      {!person ? (
-        <PersonSearch onSelect={setPerson} badge={statusBadge} placeholder="Search name or Satsang ID" />
-      ) : (
+      {person && (
         <div className="stack">
           <PersonCard v={person} onClear={() => setPerson(null)} />
           <div className="card card-pad stack">
@@ -76,133 +68,175 @@ export function CheckinPage() {
         </div>
       )}
 
-      <section className="card">
-        <div className="card-head">
-          <div className="seg" role="group" aria-label="Show">
-            <button aria-pressed={tab === 'in'} onClick={() => setTab('in')}>In ({onSite.length})</button>
-            <button aria-pressed={tab === 'out'} onClick={() => setTab('out')}>Out ({checkedOut.length})</button>
-            <button aria-pressed={tab === 'all'} onClick={() => setTab('all')}>Everyone ({data.volunteers.length})</button>
-          </div>
-        </div>
-        {tab === 'all' ? <EveryoneList onOpen={setPerson} /> : (tab === 'in' ? onSite : checkedOut).length === 0 ? (
-          <Empty icon={UserCheck} title={tab === 'in' ? 'No one checked in' : 'No one checked out yet'} />
-        ) : (
-          <ul className="list" style={{ marginTop: 8 }}>
-            {(tab === 'in' ? onSite : checkedOut).map((ci) => {
-              const v = d.volById.get(ci.volunteer_id)
-              return (
-                <li key={ci.id}>
-                  <button className="result" onClick={() => v && setPerson(v)}>
-                    <Avatar name={v?.full_name ?? '?'} />
-                    <div className="grow">
-                      <div className="result-name">{v?.full_name ?? 'Unknown'}</div>
-                      <div className="result-meta">
-                        {v?.department ?? '—'} · in {clock(ci.checked_in_at)}
-                        {ci.checked_out_at && ` · out ${clock(ci.checked_out_at)}`}
-                      </div>
-                    </div>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+      <KaryakarLists onOpen={(v) => { setPerson(v); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
     </main>
   )
 }
 
 type Status = 'all' | 'not' | 'in' | 'out'
+const NO_LEAD = '__none__'
 
-/** Every registered karyakar, filterable, with one-tap and bulk check-in / check-out. */
-function EveryoneList({ onOpen }: { onOpen: (v: Volunteer) => void }) {
-  const { d, data, act } = useStore()
-  const { busy, run } = useAction()
-  const [q, setQ] = useState('')
-  const [dept, setDept] = useState('')
-  const [status, setStatus] = useState<Status>('all')
-  const [limit, setLimit] = useState(100)
-  const [confirm, setConfirm] = useState<'in' | 'out' | null>(null)
-
-  const stateOf = (v: Volunteer): Exclude<Status, 'all'> => {
+/** Status of one karyakar today. */
+function useStateOf() {
+  const { d } = useStore()
+  return (v: Volunteer): Exclude<Status, 'all'> => {
     const c = d.checkinByVol.get(v.id)
     return !c ? 'not' : c.checked_out_at ? 'out' : 'in'
   }
+}
+
+/**
+ * The list of karyakars, either grouped by zone lead (with "18 / 40 in" per team) or as one list.
+ * Each list sits in its own scrolling window so the page itself stays short.
+ */
+function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
+  const { d, data } = useStore()
+  const stateOf = useStateOf()
+  const folds = useFolds(false)
+  const [view, setView] = useState<'team' | 'all'>('team')
+  const [q, setQ] = useState('')
+  const [dept, setDept] = useState('')
+  const [status, setStatus] = useState<Status>('all')
+  const [adding, setAdding] = useState(false)
+
   const rows = useMemo(() => {
     const words = normalise(q).split(' ').filter(Boolean)
     return [...data.volunteers]
       .filter((v) => !dept || v.department === dept)
       .filter((v) => status === 'all' || stateOf(v) === status)
-      .filter((v) => !words.length || words.every((w) => normalise(`${v.full_name} ${v.satsang_id ?? ''}`).includes(w)))
+      .filter((v) => !words.length || words.every((w) => normalise(`${v.full_name} ${v.satsang_id ?? ''} ${v.department ?? ''}`).includes(w)))
       .sort((a, b) => a.full_name.localeCompare(b.full_name))
   }, [data.volunteers, d, q, dept, status]) // eslint-disable-line react-hooks/exhaustive-deps
-  const toIn = rows.filter((v) => stateOf(v) === 'not')
-  const toOut = rows.filter((v) => stateOf(v) === 'in')
-  const scope = dept || q.trim() || status !== 'all' ? 'shown' : 'registered'
+
+  const teams = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; all: Volunteer[]; shown: Volunteer[] }>()
+    const shown = new Set(rows.map((v) => v.id))
+    for (const v of data.volunteers) {
+      const lead = d.zoneLeadForVolunteer(v).lead
+      const key = lead?.id ?? NO_LEAD
+      if (!m.has(key)) m.set(key, { key, name: lead?.name ?? 'No zone lead set', all: [], shown: [] })
+      const t = m.get(key)!
+      t.all.push(v)
+      if (shown.has(v.id)) t.shown.push(v)
+    }
+    for (const t of m.values()) t.shown.sort((a, b) => a.full_name.localeCompare(b.full_name))
+    return [...m.values()].filter((t) => t.shown.length).sort((a, b) => (a.key === NO_LEAD ? 1 : b.key === NO_LEAD ? -1 : a.name.localeCompare(b.name)))
+  }, [data.volunteers, rows, d])
+  const filtering = q.trim() !== '' || dept !== '' || status !== 'all'
 
   return (
-    <div className="stack" style={{ padding: 16, paddingTop: 12 }}>
+    <section className="stack">
+      <div className="between" style={{ flexWrap: 'wrap' }}>
+        <div className="seg" role="group" aria-label="Show">
+          <button aria-pressed={view === 'team'} onClick={() => setView('team')}>By team</button>
+          <button aria-pressed={view === 'all'} onClick={() => setView('all')}>Everyone</button>
+        </div>
+        {view === 'team' && !filtering && <FoldAll keys={teams.map((t) => t.key)} folds={folds} />}
+      </div>
       <div className="row-wrap">
-        <input className="input grow" style={{ minWidth: 180 }} placeholder="Filter by name or Satsang ID" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter karyakars" />
+        <input className="search-input compact grow" style={{ minWidth: 160, paddingLeft: 16 }} placeholder="Search name, SID or department" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search karyakars" />
         <select className="select" style={{ width: 'auto', maxWidth: '100%' }} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department">
           <option value="">All departments</option>
           {d.departments.map((x) => <option key={x} value={x}>{x}</option>)}
         </select>
       </div>
       <div className="chips">
-        {([['all', 'Everyone'], ['not', 'Not checked in'], ['in', 'Checked in'], ['out', 'Checked out']] as [Status, string][]).map(([k, label]) => (
+        {([['all', 'Everyone'], ['not', 'Not in yet'], ['in', 'Checked in'], ['out', 'Checked out']] as [Status, string][]).map(([k, label]) => (
           <button key={k} className="chip" aria-pressed={status === k} onClick={() => setStatus(k)}>{label}</button>
         ))}
       </div>
 
+      {rows.length === 0 && (
+        <div className="stack-sm" style={{ alignItems: 'center' }}>
+          <p className="subtle">No one matches.</p>
+          {q.trim() && <button className="btn btn-sm" onClick={() => setAdding(true)}>Add “{q.trim()}” as a new person</button>}
+        </div>
+      )}
+      {adding && <AddPersonSheet initialName={/^\d+$/.test(q.trim()) ? '' : q.trim()} initialSid={/^\d+$/.test(q.trim()) ? q.trim() : ''} onClose={() => setAdding(false)} onAdded={(v) => { setAdding(false); setQ(''); onOpen(v) }} />}
+
+      {view === 'team' && teams.map((t) => {
+        const inNow = t.all.filter((v) => stateOf(v) === 'in').length
+        return (
+          <FoldCard key={t.key} open={filtering || folds.isOpen(t.key)} onToggle={() => folds.toggle(t.key)}
+            title={<h3>{t.name}</h3>} count={`${inNow} / ${t.all.length} in`}>
+            <BulkBar people={t.shown} label={filtering ? 'shown' : 'in this team'} />
+            <KaryakarList people={t.shown} onOpen={onOpen} />
+          </FoldCard>
+        )
+      })}
+
+      {view === 'all' && rows.length > 0 && (
+        <FoldCard title={<h3>{filtering ? 'Matching karyakars' : 'All karyakars'}</h3>} count={rows.length}>
+          <BulkBar people={rows} label={filtering ? 'shown' : 'registered'} />
+          <KaryakarList people={rows} onOpen={onOpen} showLead />
+        </FoldCard>
+      )}
+    </section>
+  )
+}
+
+/** Check in / out everyone in a list, after a confirm. */
+function BulkBar({ people, label }: { people: Volunteer[]; label: string }) {
+  const { act } = useStore()
+  const stateOf = useStateOf()
+  const { busy, run } = useAction()
+  const [confirm, setConfirm] = useState<'in' | 'out' | null>(null)
+  const toIn = people.filter((v) => stateOf(v) === 'not')
+  const toOut = people.filter((v) => stateOf(v) === 'in')
+  if (!toIn.length && !toOut.length) return null
+  return (
+    <div style={{ padding: '8px 16px' }}>
       {confirm ? (
         <div className="banner banner-warn">
           <div className="grow stack">
-            <span>{confirm === 'in' ? `Check in all ${toIn.length} ${scope} karyakars who aren’t checked in yet?` : `Check out all ${toOut.length} ${scope} karyakars who are still checked in?`} The time is recorded as now.</span>
+            <span>{confirm === 'in' ? `Check in ${toIn.length} not yet in?` : `Check out ${toOut.length} still checked in?`} Time recorded as now.</span>
             <div className="row">
               <button className="btn btn-sm" onClick={() => setConfirm(null)}>Cancel</button>
               <button className="btn btn-sm btn-primary" disabled={busy} onClick={async () => {
-                await run(async () => { const n = confirm === 'in' ? await act.checkInMany(toIn) : await act.checkOutMany(toOut); return n }, confirm === 'in' ? `${toIn.length} checked in` : `${toOut.length} checked out`)
+                await run(async () => (confirm === 'in' ? act.checkInMany(toIn) : act.checkOutMany(toOut)), confirm === 'in' ? `${toIn.length} checked in` : `${toOut.length} checked out`)
                 setConfirm(null)
-              }}>Yes, {confirm === 'in' ? `check in ${toIn.length}` : `check out ${toOut.length}`}</button>
+              }}>Yes</button>
             </div>
           </div>
         </div>
       ) : (
         <div className="row-wrap">
-          <button className="btn" disabled={!toIn.length} onClick={() => setConfirm('in')}><LogIn /> Check in all {scope} ({toIn.length})</button>
-          <button className="btn" disabled={!toOut.length} onClick={() => setConfirm('out')}><LogOut /> Check out all {scope} ({toOut.length})</button>
+          <button className="btn btn-sm" disabled={!toIn.length} onClick={() => setConfirm('in')}><LogIn /> Check in all {label} ({toIn.length})</button>
+          <button className="btn btn-sm" disabled={!toOut.length} onClick={() => setConfirm('out')}><LogOut /> Check out all {label} ({toOut.length})</button>
         </div>
       )}
-
-      {rows.length === 0 ? <p className="subtle">No one matches.</p> : (
-        <ul className="list" style={{ margin: '0 -16px' }}>
-          {rows.slice(0, limit).map((v) => {
-            const s = stateOf(v)
-            const c = d.checkinByVol.get(v.id)
-            return (
-              <li key={v.id} className="hold" style={{ minHeight: 60, padding: '8px 16px' }}>
-                <button className="row grow" style={{ border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer', gap: 12, minWidth: 0, padding: 0 }} onClick={() => onOpen(v)}>
-                  <Avatar name={v.full_name} />
-                  <span className="grow" style={{ minWidth: 0 }}>
-                    <span style={{ fontWeight: 700, display: 'block' }}>{v.full_name}</span>
-                    <span className="subtle">
-                      {[v.satsang_id && `SID ${v.satsang_id}`, v.department].filter(Boolean).join(' · ')}
-                      {c && ` · in ${clock(c.checked_in_at)}`}{c?.checked_out_at && ` · out ${clock(c.checked_out_at)}`}
-                    </span>
-                  </span>
-                </button>
-                <div className="hold-actions">
-                  {s === 'not' && <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => run(() => act.checkIn(v), `${v.full_name.split(' ')[0]} checked in`)}><LogIn /> Check in</button>}
-                  {s === 'in' && c && <button className="btn btn-sm btn-ok" disabled={busy} onClick={() => run(() => act.checkOut(c), `${v.full_name.split(' ')[0]} checked out`)}><LogOut /> Check out</button>}
-                  {s === 'out' && <span className="badge">Checked out</span>}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {rows.length > limit && <button className="btn" onClick={() => setLimit(limit + 200)}>Show more ({rows.length - limit})</button>}
     </div>
+  )
+}
+
+/** A scrolling window of karyakars with one-tap check in / out. */
+function KaryakarList({ people, onOpen, showLead }: { people: Volunteer[]; onOpen: (v: Volunteer) => void; showLead?: boolean }) {
+  const { d, act } = useStore()
+  const stateOf = useStateOf()
+  const { busy, run } = useAction()
+  return (
+    <ul className="list scroll-window">
+      {people.map((v) => {
+        const s = stateOf(v)
+        const c = d.checkinByVol.get(v.id)
+        const first = v.full_name.split(' ')[0]
+        return (
+          <li key={v.id} className="hold">
+            <button className="hold-main kk-name" onClick={() => onOpen(v)}>
+              <span className="hold-title">{v.full_name}</span>
+              <span className="hold-sub">
+                <span>{[v.department, showLead && d.zoneLeadForVolunteer(v).lead?.name].filter(Boolean).join(' · ') || '—'}</span>
+                {c && <span>in {clock(c.checked_in_at)}{c.checked_out_at && ` · out ${clock(c.checked_out_at)}`}</span>}
+              </span>
+            </button>
+            <div className="hold-actions">
+              {s === 'not' && <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => run(() => act.checkIn(v), `${first} checked in`)}>Check in</button>}
+              {s === 'in' && c && <button className="btn btn-sm btn-ok" disabled={busy} onClick={() => run(() => act.checkOut(c), `${first} checked out`)}>Check out</button>}
+              {s === 'out' && <span className="subtle">checked out</span>}
+            </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
