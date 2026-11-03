@@ -8,7 +8,7 @@ import { PersonCard } from '../components/PersonCard'
 import { IssueRow } from '../components/IssueRow'
 import { KitAddSheet } from '../components/KitAddSheet'
 import { AddPersonSheet } from '../components/AddPersonSheet'
-import { Avatar, Empty, Sheet, useAction } from '../components/ui'
+import { Avatar, Empty, FoldCard, Sheet, useAction } from '../components/ui'
 import { ActivityList } from './History'
 import { KitRow } from './Kit'
 
@@ -120,30 +120,24 @@ export function ProfilePage() {
         </div>
       </div>
 
-      <section className="card">
-        <div className="card-head">
-          <span className="section-title"><ClipboardList size={14} /> Confirmed kit</span>
-          <button className="btn btn-sm" onClick={() => setAddingKit(true)}><Plus /> Add</button>
-        </div>
+      <FoldCard title={<h3 className="row"><ClipboardList size={16} /> Confirmed kit</h3>} count={kit.length}
+        actions={<button className="btn btn-sm" onClick={() => setAddingKit(true)}><Plus /> Add</button>}>
         {kit.length === 0 ? <p className="subtle card-pad">No confirmed kit.</p> : <ul className="list">{kit.map((k) => <li key={k.id}><KitRow k={k} showPerson={false} /></li>)}</ul>}
-      </section>
+      </FoldCard>
 
-      <section className="card">
-        <div className="card-head"><span className="section-title">Holding now · {out.length}</span></div>
+      <FoldCard title={<h3>Holding now</h3>} count={out.length}>
         {out.length === 0 ? <p className="subtle card-pad">Nothing out.</p> : <ul className="list">{out.map((i) => <li key={i.id}><IssueRow issue={i} now={now} /></li>)}</ul>}
-      </section>
+      </FoldCard>
 
       {past.length > 0 && (
-        <section className="card">
-          <div className="card-head"><span className="section-title">Returned & consumables · {past.length}</span></div>
+        <FoldCard title={<h3>Returned & consumables</h3>} count={past.length} defaultOpen={false}>
           <ul className="list">{past.map((i) => <li key={i.id}><IssueRow issue={i} now={now} showReturn={false} /></li>)}</ul>
-        </section>
+        </FoldCard>
       )}
 
-      <section className="card">
-        <div className="card-head"><span className="section-title">Full history</span></div>
+      <FoldCard title={<h3>Full history</h3>} count={activity.length} defaultOpen={false}>
         <ActivityList rows={activity} />
-      </section>
+      </FoldCard>
 
       {addingKit && <KitAddSheet person={v} onClose={() => setAddingKit(false)} />}
       {editing && <EditPersonSheet v={v} onClose={() => setEditing(false)} />}

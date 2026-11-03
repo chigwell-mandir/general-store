@@ -7,7 +7,7 @@ import { itemLabel } from '../lib/search'
 import { useNow, when } from '../lib/time'
 import { sortItems } from '../components/ItemPicker'
 import { IssueRow } from '../components/IssueRow'
-import { Empty, Sheet, Swatch, useAction } from '../components/ui'
+import { Empty, FoldAll, FoldCard, Sheet, Swatch, useAction, useFolds } from '../components/ui'
 import { describeActivity } from './History'
 import { ExportButton } from './Export'
 
@@ -20,6 +20,7 @@ export function DashboardPage() {
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
   const [counting, setCounting] = useState(false)
   const [counts, setCounts] = useState<Record<string, string>>({})
+  const folds = useFolds()
 
   const items = useMemo(() => sortItems(data.items.filter((i) => i.active)), [data.items])
   const byCat = useMemo(() => {
@@ -85,9 +86,11 @@ export function DashboardPage() {
         </div>
       )}
 
+      {byCat.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginBottom: -8 }}><FoldAll keys={byCat.map(([c]) => c)} folds={folds} /></div>}
       {byCat.map(([cat, list]) => (
-        <section key={cat} className="card">
-          <div className="card-head"><h2>{cat}</h2><span className="subtle">{list[0].returnable ? 'Returnable' : 'Consumable'}</span></div>
+        <FoldCard key={cat} open={folds.isOpen(cat)} onToggle={() => folds.toggle(cat)}
+          title={<h2>{cat} <span className="subtle" style={{ fontWeight: 500, fontSize: '0.85rem' }}>· {list[0].returnable ? 'Returnable' : 'Consumable'}</span></h2>}
+          count={`${list.length} items`}>
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Item</th><th className="r">In store</th><th className="r">Out</th>{list[0].returnable && <th className="r">Total</th>}<th style={{ width: '28%' }} /></tr></thead>
@@ -115,7 +118,7 @@ export function DashboardPage() {
               </tbody>
             </table>
           </div>
-        </section>
+        </FoldCard>
       ))}
 
       {editing && <ItemSheet item={editing === 'new' ? null : editing} onClose={() => setEditing(null)} now={now} />}

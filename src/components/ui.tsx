@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { CheckCircle2, Minus, Plus, X, XCircle, type LucideIcon } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronsUpDown, Minus, Plus, X, XCircle, type LucideIcon } from 'lucide-react'
 
 // ── Sheet: bottom sheet on phones, centred dialog on larger screens ─────
 export function Sheet({ title, subtitle, onClose, children, footer }: {
@@ -145,4 +145,54 @@ export function useAction() {
     }
   }
   return { busy, run }
+}
+
+// ── Collapsible sections ─────────────────────────────────────────────────
+
+/** Remembers which sections on a page are folded; supports collapse / expand all. */
+export function useFolds(defaultOpen = true) {
+  const [flipped, setFlipped] = useState<Set<string>>(new Set())
+  const isOpen = (key: string) => (flipped.has(key) ? !defaultOpen : defaultOpen)
+  const toggle = (key: string) => setFlipped((s) => { const n = new Set(s); if (n.has(key)) n.delete(key); else n.add(key); return n })
+  const setAll = (keys: string[], open: boolean) => setFlipped(open === defaultOpen ? new Set() : new Set(keys))
+  return { isOpen, toggle, setAll }
+}
+
+/** "Collapse all / Expand all" for a page of folding sections. */
+export function FoldAll({ keys, folds }: { keys: string[]; folds: ReturnType<typeof useFolds> }) {
+  if (keys.length < 2) return null
+  const allClosed = keys.every((k) => !folds.isOpen(k))
+  return (
+    <button className="btn btn-ghost btn-sm" onClick={() => folds.setAll(keys, allClosed)}>
+      <ChevronsUpDown /> {allClosed ? 'Expand all' : 'Collapse all'}
+    </button>
+  )
+}
+
+/** A card whose header (chevron + title + count) folds its body away. */
+export function FoldCard({ title, count, actions, open, onToggle, children, defaultOpen = true }: {
+  title: ReactNode
+  count?: ReactNode
+  actions?: ReactNode
+  open?: boolean
+  onToggle?: () => void
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  const [own, setOwn] = useState(defaultOpen)
+  const isOpen = open ?? own
+  const toggle = onToggle ?? (() => setOwn(!own))
+  return (
+    <section className="card">
+      <div className="fold-head">
+        <button className="fold-toggle" onClick={toggle} aria-expanded={isOpen}>
+          <ChevronDown className="fold-chevron" style={{ rotate: isOpen ? '0deg' : '-90deg' }} aria-hidden />
+          <span className="grow" style={{ minWidth: 0 }}>{title}</span>
+          {count !== undefined && count !== null && <span className="badge">{count}</span>}
+        </button>
+        {actions}
+      </div>
+      {isOpen && <div className="fold-body">{children}</div>}
+    </section>
+  )
 }

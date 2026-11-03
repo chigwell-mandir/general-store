@@ -6,7 +6,7 @@ import { useStore, type Derived } from '../lib/store'
 import { itemLabel } from '../lib/search'
 import { useNow, when } from '../lib/time'
 import { copyText } from '../lib/clipboard'
-import { Empty, useToast } from '../components/ui'
+import { Empty, FoldAll, FoldCard, useFolds, useToast } from '../components/ui'
 
 type Group = { key: string; lead: string; phone: string | null; issues: Issue[] }
 
@@ -47,6 +47,7 @@ export function EscalationPage() {
   const toast = useToast()
   const now = useNow()
   const [overdueOnly, setOverdueOnly] = useState(false)
+  const folds = useFolds()
 
   const issues = useMemo(() => d.outstanding.filter((i) => !overdueOnly || d.isOverdue(i, now)), [d, overdueOnly, now])
   const groups = useMemo(() => groupIssues(issues, d), [issues, d])
@@ -77,23 +78,21 @@ export function EscalationPage() {
 
       {groups.length === 0 && <div className="card"><Empty icon={PartyPopper} title="Nothing to escalate">{overdueOnly ? 'Nothing is overdue.' : 'Every returnable item is back.'}</Empty></div>}
 
+      {groups.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginBottom: -8 }}><FoldAll keys={groups.map((g) => g.key)} folds={folds} /></div>}
       {groups.map((g) => {
         const text = leadText(g, d)
         return (
-          <section key={g.key} className="card card-pad stack">
-            <div className="between">
-              <div>
-                <h2>{g.lead}</h2>
-                <p className="subtle">{g.issues.reduce((n, i) => n + d.outQty(i), 0)} items out</p>
-              </div>
-              <div className="row">
+          <FoldCard key={g.key} open={folds.isOpen(g.key)} onToggle={() => folds.toggle(g.key)}
+            title={<h2>{g.lead}</h2>} count={`${g.issues.reduce((n, i) => n + d.outQty(i), 0)} out`}>
+            <div className="stack" style={{ padding: '8px 16px 16px' }}>
+              <div className="row-wrap">
                 {g.phone && <a className="btn btn-sm" href={`tel:${g.phone.replace(/\s/g, '')}`}><Phone /> Call</a>}
                 {g.key !== NO_LEAD && <Link className="btn btn-sm" to={`/return?lead=${g.key}`}><CornerDownLeft /> Return</Link>}
                 <button className="btn btn-sm" onClick={() => copy(`${header}\n\n${text}`, g.lead)}><Copy /> Copy</button>
               </div>
+              <div className="wa-preview">{text}</div>
             </div>
-            <div className="wa-preview">{text}</div>
-          </section>
+          </FoldCard>
         )
       })}
     </main>

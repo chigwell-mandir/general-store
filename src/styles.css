@@ -352,7 +352,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .fold-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 4px; }
 .fold-toggle { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; min-height: 48px; padding: 4px 8px; border: 0; background: transparent; text-align: left; cursor: pointer; border-radius: var(--r-sm); }
 .fold-toggle:hover { background: var(--surface-2); }
-.fold-toggle h2 { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fold-toggle h2, .fold-toggle h3 { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fold-chevron { width: 20px; height: 20px; flex: none; color: var(--ink-3); transition: rotate 160ms var(--ease); }
 .fold-body { border-top: 1px solid var(--line); padding-top: 4px; }
 .member + .member { border-top: 1px solid var(--line); }

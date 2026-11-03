@@ -321,6 +321,13 @@ function useStoreValue() {
       else await backend.remove('department_leads', { department })
       await refresh(['department_leads'])
     },
+    /** Loads the 2025 workbook as test data (see lib/testData.ts). */
+    async loadTestData(file: File) {
+      const { loadTestData } = await import('./testData')
+      const report = await loadTestData(file)
+      await refresh()
+      return report
+    },
     /** Start fresh: removes people, issues, kit, check-ins, zone leads and history. */
     async wipe(opts: { keepCatalogue: boolean; keepCounts: boolean }) {
       for (const t of ['issues', 'kit_requirements', 'checkins', 'activity', 'department_leads', 'zone_leads', 'volunteers'] as TableName[]) {

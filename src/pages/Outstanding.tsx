@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { AlarmClock, Megaphone, PackageOpen, PartyPopper, Search, Users } from 'lucide-react'
+import { AlarmClock, Megaphone, PackageOpen, PartyPopper, Search, Users, UserRound } from 'lucide-react'
 import type { Issue } from '../types'
 import { useStore } from '../lib/store'
 import { itemLabel, normalise } from '../lib/search'
 import { useNow } from '../lib/time'
 import { IssueRow } from '../components/IssueRow'
-import { Avatar, Empty, Swatch } from '../components/ui'
+import { Avatar, Empty, FoldAll, FoldCard, Swatch, useFolds } from '../components/ui'
 import { ExportButton } from './Export'
 
 export function OutstandingPage() {
@@ -15,6 +15,7 @@ export function OutstandingPage() {
   const [view, setView] = useState<'person' | 'item'>('person')
   const [onlyOverdue, setOnlyOverdue] = useState(false)
   const [q, setQ] = useState('')
+  const folds = useFolds()
 
   const rows = useMemo(() => {
     const nq = normalise(q)
@@ -83,38 +84,35 @@ export function OutstandingPage() {
         </div>
       )}
 
+      {groups.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginBottom: -8 }}><FoldAll keys={groups.map(([k]) => k)} folds={folds} /></div>}
       {groups.map(([key, issues]) => {
+        const n = issues.reduce((s, i) => s + d.outQty(i), 0)
         if (view === 'person') {
           const v = d.volById.get(key)
           const zl = d.zoneLeadForVolunteer(v)
           return (
-            <section key={key} className="card">
-              <div className="card-head" style={{ paddingBottom: 8 }}>
-                <Link to={`/people/${key}`} className="row grow" style={{ color: 'inherit', textDecoration: 'none', gap: 12 }}>
+            <FoldCard key={key} open={folds.isOpen(key)} onToggle={() => folds.toggle(key)} count={`${n} out`}
+              title={
+                <span className="row" style={{ gap: 12 }}>
                   <Avatar name={v?.full_name ?? '?'} />
-                  <div className="grow">
-                    <div style={{ fontWeight: 750 }}>{v?.full_name ?? 'Unknown person'}</div>
-                    <div className="subtle">{[v?.satsang_id && `SID ${v.satsang_id}`, v?.department, v?.phone].filter(Boolean).join(' · ')}</div>
-                  </div>
-                </Link>
-                {zl.lead
-                  ? <Link to={`/return?lead=${zl.lead.id}`} className="badge badge-info" style={{ textDecoration: 'none' }} title="See this zone lead’s whole team">{zl.lead.name}</Link>
-                  : <span className="badge">No zone lead</span>}
-              </div>
+                  <span className="grow" style={{ minWidth: 0 }}>
+                    <span style={{ fontWeight: 750, display: 'block' }}>{v?.full_name ?? 'Unknown person'}</span>
+                    <span className="subtle">{[v?.satsang_id && `SID ${v.satsang_id}`, v?.department, zl.lead?.name ?? 'No zone lead'].filter(Boolean).join(' · ')}</span>
+                  </span>
+                </span>
+              }
+              actions={<Link to={`/people/${key}`} className="icon-btn" aria-label={`Open ${v?.full_name ?? 'person'}’s profile`}><UserRound /></Link>}
+            >
               <ul className="list">{issues.map((i) => <li key={i.id}><IssueRow issue={i} now={now} /></li>)}</ul>
-            </section>
+            </FoldCard>
           )
         }
         const it = d.itemById.get(key)
-        const n = issues.reduce((s, i) => s + d.outQty(i), 0)
         return (
-          <section key={key} className="card">
-            <div className="card-head" style={{ paddingBottom: 8 }}>
-              <h3 className="row">{it && <Swatch category={it.category} name={it.name} />}{it ? itemLabel(it) : 'Unknown item'}</h3>
-              <span className="badge badge-warn">{n} out</span>
-            </div>
+          <FoldCard key={key} open={folds.isOpen(key)} onToggle={() => folds.toggle(key)} count={`${n} out`}
+            title={<h3 className="row">{it && <Swatch category={it.category} name={it.name} />}{it ? itemLabel(it) : 'Unknown item'}</h3>}>
             <ul className="list">{issues.map((i) => <li key={i.id}><IssueRow issue={i} now={now} showPerson /></li>)}</ul>
-          </section>
+          </FoldCard>
         )
       })}
     </main>

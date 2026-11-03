@@ -5,7 +5,7 @@ import type { KitRequirement } from '../types'
 import { useStore } from '../lib/store'
 import { itemLabel, normalise } from '../lib/search'
 import { KitAddSheet } from '../components/KitAddSheet'
-import { Empty, Swatch, useAction } from '../components/ui'
+import { Empty, FoldAll, FoldCard, Swatch, useAction, useFolds } from '../components/ui'
 
 export function useKitStatus() {
   const { d } = useStore()
@@ -44,6 +44,7 @@ export function KitPage() {
   const [group, setGroup] = useState<'lead' | 'person'>('lead')
   const [pendingOnly, setPendingOnly] = useState(false)
   const [q, setQ] = useState('')
+  const folds = useFolds()
 
   const rows = useMemo(() => {
     const nq = normalise(q)
@@ -94,11 +95,12 @@ export function KitPage() {
       {groups.length === 0 && (
         <div className="card"><Empty icon={ClipboardList} title={data.kit_requirements.length ? 'No matches' : 'No confirmed kit yet'}>When a zone lead confirms someone needs an item (e.g. “Vish needs a blue bib and an all-channel walkie”), add it here. It then shows up when issuing to that person.</Empty></div>
       )}
+      {groups.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginBottom: -8 }}><FoldAll keys={groups.map(([k]) => k)} folds={folds} /></div>}
       {groups.map(([key, list]) => (
-        <section key={key} className="card">
-          <div className="card-head"><h3>{key}</h3><span className="subtle">{list.filter((k) => status(k).done).length}/{list.length} issued</span></div>
+        <FoldCard key={key} open={folds.isOpen(key)} onToggle={() => folds.toggle(key)} title={<h3>{key}</h3>}
+          count={`${list.filter((k) => status(k).done).length}/${list.length} issued`}>
           <ul className="list">{list.map((k) => <li key={k.id}><KitRow k={k} showPerson={group === 'lead'} /></li>)}</ul>
-        </section>
+        </FoldCard>
       ))}
 
       {adding && <KitAddSheet onClose={() => setAdding(false)} />}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Database, Download, FileSpreadsheet, Pencil, Plus, RotateCcw, Sparkles, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, ChevronDown, FlaskConical, Info, Database, Download, FileSpreadsheet, Pencil, Plus, RotateCcw, Sparkles, Trash2, Upload } from 'lucide-react'
 import type { ZoneLead } from '../types'
 import { useStore } from '../lib/store'
 import { normalise } from '../lib/search'
@@ -21,6 +21,7 @@ export function SetupPage() {
       <VolunteerImportCard />
       <StockImportCard />
       <BackupCard />
+      <TestDataCard />
       <StartFreshCard />
       {mode === 'demo' && <DemoCard />}
     </main>
@@ -49,6 +50,7 @@ function ZoneLeadsCard() {
   const { data, d, act } = useStore()
   const { busy, run } = useAction()
   const [editing, setEditing] = useState<ZoneLead | 'new' | null>(null)
+  const [showDepts, setShowDepts] = useState(false)
   const deptCounts = useMemo(() => {
     const m = new Map<string, number>()
     for (const v of data.volunteers) if (v.department) m.set(v.department.trim(), (m.get(v.department.trim()) ?? 0) + 1)
@@ -79,8 +81,12 @@ function ZoneLeadsCard() {
 
       {d.departments.length > 0 && data.zone_leads.length > 0 && (
         <div className="stack">
-          <div className="between"><span className="section-title">Department → zone lead</span>{unmapped > 0 && <span className="badge badge-warn">{unmapped} unassigned</span>}</div>
-          <div className="table-wrap">
+          <button className="fold-toggle" style={{ marginLeft: -8 }} onClick={() => setShowDepts(!showDepts)} aria-expanded={showDepts}>
+            <ChevronDown className="fold-chevron" style={{ rotate: showDepts ? '0deg' : '-90deg' }} aria-hidden />
+            <span className="section-title grow">Department → zone lead ({d.departments.length})</span>
+            {unmapped > 0 && <span className="badge badge-warn">{unmapped} unassigned</span>}
+          </button>
+          {showDepts && <div className="table-wrap">
             <table className="table">
               <thead><tr><th>Department</th><th className="r">People</th><th>Zone lead</th></tr></thead>
               <tbody>
@@ -98,7 +104,7 @@ function ZoneLeadsCard() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
       )}
       {editing && <ZoneLeadSheet lead={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
@@ -279,6 +285,37 @@ function BackupCard() {
   )
 }
 
+function TestDataCard() {
+  const { data, act } = useStore()
+  const { busy, run } = useAction()
+  const [file, setFile] = useState<File | null>(null)
+  const hasData = data.volunteers.length > 0 || data.issues.length > 0
+  return (
+    <section className="card card-pad stack">
+      <h2 className="row"><FlaskConical size={20} /> Test data (2025)</h2>
+      <p className="subtle">
+        Fills the app with last year’s workbook so you can try everything or demo it: about 460 people, the 7 “Zone-lead” people as zone leads
+        (departments shared out between them for testing), karyakar check-ins from “Diwali In/Out”, and the Hi-Vis, Walkies and Misc logs as
+        issues dated yesterday. Use <strong>Start fresh</strong> below to clear it again before adding your 2026 data.
+      </p>
+      {hasData ? (
+        <div className="banner banner-info"><Info /><span>The app already has data ({data.volunteers.length} people, {data.issues.length} issues). Start fresh first, then load test data.</span></div>
+      ) : !file ? (
+        <FilePick label="Choose General Store - 2025.xlsx" onFile={setFile} />
+      ) : (
+        <div className="row-wrap">
+          <span className="badge badge-brand">{file.name}</span>
+          <button className="btn" onClick={() => setFile(null)}>Cancel</button>
+          <button className="btn btn-primary" disabled={busy} onClick={async () => {
+            await run(async () => { const r = await act.loadTestData(file); return r }, 'Test data loaded')
+            setFile(null)
+          }}>Load test data</button>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function StartFreshCard() {
   const { data, act } = useStore()
   const { busy, run } = useAction()
@@ -289,6 +326,10 @@ function StartFreshCard() {
   return (
     <section className="card card-pad stack" style={{ borderColor: 'color-mix(in srgb, var(--danger) 35%, var(--line))' }}>
       <h2 className="row" style={{ color: 'var(--danger)' }}><AlertTriangle size={20} /> Start fresh</h2>
+      <p className="subtle">
+        Use this to get a <strong>blank app</strong> to set up by hand, to clear test data, or before importing your 2026 data.
+        Untick “Keep the item catalogue” for a completely empty app.
+      </p>
       <p className="subtle">
         Permanently deletes everything for this event — {counts} and the whole history — ready to import the official
         mastersheet. Every device sees the empty app straight away. <strong>This can’t be undone</strong>, so download a backup first.

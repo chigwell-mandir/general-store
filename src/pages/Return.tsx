@@ -7,7 +7,7 @@ import { useNow } from '../lib/time'
 import { PersonSearch } from '../components/PersonSearch'
 import { PersonCard } from '../components/PersonCard'
 import { IssueRow } from '../components/IssueRow'
-import { Avatar, Empty, useAction } from '../components/ui'
+import { Avatar, Empty, FoldCard, useAction } from '../components/ui'
 
 /** Returns every outstanding unit in `issues`, one issue at a time. */
 function useReturnAll() {
@@ -66,12 +66,11 @@ export function ReturnPage() {
         </section>
       )}
 
-      <section className="card">
-        <div className="card-head"><span className="section-title">Everything still out · {d.outstanding.length}</span></div>
+      <FoldCard title={<h3>Everything still out</h3>} count={d.outstanding.length}>
         {d.outstanding.length === 0
           ? <Empty icon={PartyPopper} title="All returned">No returnable items are out right now.</Empty>
           : <ul className="list">{[...d.outstanding].reverse().map((i) => <li key={i.id}><IssueRow issue={i} now={now} showPerson /></li>)}</ul>}
-      </section>
+      </FoldCard>
     </main>
   )
 }

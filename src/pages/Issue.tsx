@@ -10,7 +10,7 @@ import { PersonCard } from '../components/PersonCard'
 import { ItemPicker } from '../components/ItemPicker'
 import { IssueSheet } from '../components/IssueSheet'
 import { IssueRow } from '../components/IssueRow'
-import { Swatch } from '../components/ui'
+import { FoldCard, Swatch } from '../components/ui'
 
 /** Remembers the selected person in the URL so Back and refresh behave. */
 export function usePersonParam() {
@@ -47,10 +47,9 @@ export function IssuePage() {
         </div>
         <PersonSearch onSelect={setPerson} />
         {recent.length > 0 && (
-          <section className="card">
-            <div className="card-head"><span className="section-title">Latest still out</span></div>
+          <FoldCard title={<h3>Latest still out</h3>} count={recent.length}>
             <ul className="list">{recent.map((i) => <li key={i.id}><IssueRow issue={i} now={now} showPerson showReturn={false} /></li>)}</ul>
-          </section>
+          </FoldCard>
         )}
       </main>
     )
@@ -96,10 +95,9 @@ export function IssuePage() {
       </section>
 
       {theirIssues.length > 0 && (
-        <section className="card">
-          <div className="card-head"><span className="section-title">Their items today</span></div>
+        <FoldCard title={<h3>Their items</h3>} count={theirIssues.length}>
           <ul className="list">{theirIssues.map((i) => <li key={i.id}><IssueRow issue={i} now={now} /></li>)}</ul>
-        </section>
+        </FoldCard>
       )}
 
       <button className="btn btn-lg btn-block" onClick={() => { setPerson(null); window.scrollTo({ top: 0 }) }}>
