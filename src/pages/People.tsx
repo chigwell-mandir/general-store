@@ -97,8 +97,7 @@ export function ProfilePage() {
       <div className="row">
         <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)} style={{ marginLeft: -8 }}><ArrowLeft /> Back</button>
         <div className="grow" />
-        <Link className="btn btn-sm btn-primary" to={`/?p=${v.id}`}>Issue to {v.full_name.split(' ')[0]}</Link>
-        {out.length > 0 && <Link className="btn btn-sm" to={`/return?p=${v.id}`}>Return</Link>}
+        <Link className="btn btn-sm btn-primary" to={`/?p=${v.id}`}>Open at desk</Link>
       </div>
       <PersonCard v={v} showProfileLink={false} />
 

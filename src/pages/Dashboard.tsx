@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
-import { AlarmClock, AlertTriangle, ClipboardCheck, PackageOpen, Plus, Save, Sparkles, Users } from 'lucide-react'
+import { AlertTriangle, ClipboardCheck, Plus, Save, Sparkles } from 'lucide-react'
 import type { Item } from '../types'
 import { useStore } from '../lib/store'
 import { itemLabel } from '../lib/search'
@@ -9,7 +8,6 @@ import { sortItems } from '../components/ItemPicker'
 import { IssueRow } from '../components/IssueRow'
 import { Empty, FoldAll, FoldCard, Sheet, Swatch, useAction, useFolds } from '../components/ui'
 import { describeActivity } from './History'
-import { ExportButton } from './Export'
 
 export const isLow = (i: Item) => i.active && i.track_stock && (i.in_store === 0 || i.in_store <= i.low_threshold)
 
@@ -29,9 +27,6 @@ export function DashboardPage() {
     return [...m.entries()]
   }, [items])
   const low = items.filter(isLow)
-  const units = d.outstanding.reduce((n, i) => n + d.outQty(i), 0)
-  const overdue = d.outstanding.filter((i) => d.isOverdue(i, now)).length
-  const people = new Set(d.outstanding.map((i) => i.volunteer_id)).size
 
   const saveCounts = () => run(async () => {
     const changes = Object.entries(counts).filter(([id, v]) => {
@@ -48,24 +43,17 @@ export function DashboardPage() {
     <main className="page">
       <div className="page-head">
         <div>
-          <h1>Dashboard & stock</h1>
-          <p className="muted">Live totals. “In store” is what should be on the shelves now.</p>
+          <h1>Stock</h1>
+          <p className="muted">“In store” is what should be on the shelves now.</p>
         </div>
         <div className="row-wrap">
           {!counting
             ? <button className="btn" onClick={() => setCounting(true)}><ClipboardCheck /> Count stock</button>
             : <><button className="btn" onClick={() => { setCounting(false); setCounts({}) }}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={saveCounts}><Save /> Save counts</button></>}
           <button className="btn" onClick={() => setEditing('new')}><Plus /> Add item</button>
-          <ExportButton kind="items" label="Export" />
         </div>
       </div>
 
-      <div className="stats">
-        <Link to="/outstanding" className="card stat"><span className="stat-label"><PackageOpen /> Items out now</span><span className="stat-value">{units}</span></Link>
-        <Link to="/outstanding" className="card stat"><span className="stat-label"><Users /> People holding kit</span><span className="stat-value">{people}</span></Link>
-        <Link to="/outstanding" className={`card stat ${overdue ? 'tone-danger' : ''}`}><span className="stat-label"><AlarmClock /> Overdue</span><span className="stat-value">{overdue}</span></Link>
-        <div className={`card stat ${low.length ? 'tone-warn' : 'tone-ok'}`}><span className="stat-label"><AlertTriangle /> Low stock</span><span className="stat-value">{low.length}</span></div>
-      </div>
 
       {counting && (
         <div className="banner banner-info"><ClipboardCheck /><span>Type the number physically on the shelf for each item you count. Leave blank to skip. Items not yet counted will start being tracked.</span></div>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { LogIn, LogOut, Undo2, UserCheck, UserRoundX, Users } from 'lucide-react'
+import { LogIn, LogOut, Undo2, UserCheck } from 'lucide-react'
 import type { Volunteer } from '../types'
 import { useStore } from '../lib/store'
 import { clock, when } from '../lib/time'
@@ -8,7 +8,6 @@ import { normalise } from '../lib/search'
 import { PersonSearch } from '../components/PersonSearch'
 import { PersonCard } from '../components/PersonCard'
 import { Avatar, Empty, useAction } from '../components/ui'
-import { ExportButton } from './Export'
 
 /** On-the-day karyakar (KK) registration: check in on arrival, check out when leaving. Separate from kit. */
 export function CheckinPage() {
@@ -31,20 +30,14 @@ export function CheckinPage() {
   }
 
   return (
-    <main className="page">
+    <main className="page page-narrow">
       <div className="page-head">
         <div>
-          <h1>Karyakar check-in / check-out</h1>
-          <p className="muted">Karyakar registration on the day. Kit is issued separately on the Issue tab.</p>
+          <h1>Karyakar</h1>
+          <p className="muted">{onSite.length} checked in · {checkedOut.length} checked out · {data.volunteers.length} registered</p>
         </div>
-        <ExportButton kind="karyakar" label="Export to Excel" />
       </div>
 
-      <div className="stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <div className="card stat tone-ok"><span className="stat-label"><UserCheck /> Checked in</span><span className="stat-value">{onSite.length}</span></div>
-        <div className="card stat"><span className="stat-label"><UserRoundX /> Checked out</span><span className="stat-value">{checkedOut.length}</span></div>
-        <div className="card stat"><span className="stat-label"><Users /> Registered</span><span className="stat-value">{data.volunteers.length}</span></div>
-      </div>
 
       {!person ? (
         <PersonSearch onSelect={setPerson} badge={statusBadge} placeholder="Search name or Satsang ID" />
@@ -78,7 +71,7 @@ export function CheckinPage() {
                 </button>
               </>
             )}
-            <Link to={`/?p=${person.id}`} className="btn">Issue kit to {first(person)}</Link>
+            <Link to={`/?p=${person.id}`} className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }}>Open {first(person)} at the item desk</Link>
           </div>
         </div>
       )}

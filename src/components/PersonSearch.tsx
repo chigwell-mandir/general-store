@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, ShieldUser, UserPlus, X } from 'lucide-react'
+import { Search, UserPlus, X } from 'lucide-react'
 import type { Volunteer, ZoneLead } from '../types'
 import { useStore } from '../lib/store'
 import { normalise } from '../lib/search'
-import { Avatar } from './ui'
 import { AddPersonSheet } from './AddPersonSheet'
 
 function Highlight({ text, q }: { text: string; q: string }) {
@@ -30,8 +29,12 @@ export function PersonSearch({ onSelect, onSelectLead, autoFocus = true, placeho
   const [active, setActive] = useState(0)
   const [adding, setAdding] = useState(false)
   const input = useRef<HTMLInputElement>(null)
-  const results = useMemo(() => d.searchPeople(q), [d, q])
   const leads = useMemo(() => (onSelectLead ? d.searchLeads(q) : []), [d, q, onSelectLead])
+  // A linked zone lead appears once (as the lead), not again as a person
+  const results = useMemo(() => {
+    const shown = new Set(leads.map((z) => z.volunteer_id).filter(Boolean))
+    return d.searchPeople(q).filter((v) => !shown.has(v.id))
+  }, [d, q, leads])
   const total = leads.length + results.length
 
   useEffect(() => setActive(0), [q])
@@ -85,12 +88,11 @@ export function PersonSearch({ onSelect, onSelectLead, autoFocus = true, placeho
             const n = [...own, ...team].reduce((s, x) => s + d.outQty(x), 0)
             return (
               <button key={z.id} role="option" aria-selected={i === active} className="result" onClick={() => pickLead(z)} onMouseEnter={() => setActive(i)}>
-                <span className="avatar" aria-hidden><ShieldUser size={20} /></span>
                 <div className="grow">
                   <div className="result-name"><Highlight text={z.name} q={q} /></div>
-                  <div className="result-meta">Zone lead · their items and team · {n} out</div>
+                  <div className="result-meta">Their items and their team’s{n ? ` · ${n} out` : ''}</div>
                 </div>
-                <span className="badge badge-info">Team</span>
+                <span className="tag">Zone lead</span>
               </button>
             )
           })}
@@ -98,18 +100,16 @@ export function PersonSearch({ onSelect, onSelectLead, autoFocus = true, placeho
             const i = j + leads.length
             return (
             <button key={v.id} role="option" aria-selected={i === active} className="result" onClick={() => pick(v)} onMouseEnter={() => setActive(i)}>
-              <Avatar name={v.full_name} />
               <div className="grow">
                 <div className="result-name"><Highlight text={v.full_name} q={q} /></div>
                 <div className="result-meta">
                   {v.satsang_id ? `SID ${v.satsang_id}` : 'No Satsang ID'}
                   {v.department && ` · ${v.department}`}
-                  {v.mandal && ` · ${v.mandal}`}
                 </div>
               </div>
-              {d.leadByVol.has(v.id) && <span className="badge badge-info">Zone lead</span>}
+              {d.leadByVol.has(v.id) && <span className="tag">Zone lead</span>}
               {badge?.(v)}
-              {v.added_at_desk && <span className="badge badge-warn">Added at desk</span>}
+
             </button>
             )
           })}

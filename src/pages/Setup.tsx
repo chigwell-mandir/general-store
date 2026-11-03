@@ -8,7 +8,7 @@ import { resetDemo } from '../lib/backend/demo'
 import { downloadStockTemplate, parseStock, parseVolunteers, readSheets, type StockRow, type VolunteerImport } from '../lib/importers'
 import { Sheet, useAction, useToast } from '../components/ui'
 import { PersonSearch } from '../components/PersonSearch'
-import { ExportButton } from './Export'
+import { ExportButton } from '../components/ExportButton'
 import { Link } from 'react-router'
 
 export function SetupPage() {
@@ -279,7 +279,7 @@ function BackupCard() {
       <p className="subtle">Download a full backup at the end of each day, or export just the issue log, karyakar check-ins or item list.</p>
       <div className="row-wrap">
         <ExportButton kind="everything" label="Download full backup" />
-        <Link to="/export" className="btn btn-ghost">More export options</Link>
+        <Link to="/history" className="btn btn-ghost">More export options</Link>
       </div>
     </section>
   )

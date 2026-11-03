@@ -7,7 +7,7 @@ import { useStore } from '../lib/store'
 import { itemLabel, normalise } from '../lib/search'
 import { when } from '../lib/time'
 import { Empty } from '../components/ui'
-import { ExportButton } from './Export'
+import { ExportButton } from '../components/ExportButton'
 
 const VERB: Record<ActivityAction, string> = {
   issue: 'Issued', return: 'Returned', void: 'Cancelled issue of', stock: 'Stock count for',
@@ -84,8 +84,16 @@ export function HistoryPage() {
   return (
     <main className="page">
       <div className="page-head">
-        <div><h1>History</h1><p className="muted">Every action, newest first. Nothing is ever silently changed.</p></div>
-        <ExportButton kind="issues" label="Export issue log" />
+        <div><h1>History & export</h1><p className="muted">Every action, newest first.</p></div>
+      </div>
+      <div className="stack-sm">
+        <span className="label">Download as Excel</span>
+        <div className="row-wrap">
+          <ExportButton kind="issues" className="btn btn-sm" />
+          <ExportButton kind="karyakar" className="btn btn-sm" />
+          <ExportButton kind="items" className="btn btn-sm" />
+          <ExportButton kind="everything" className="btn btn-sm" />
+        </div>
       </div>
       <div className="search-box">
         <Search aria-hidden />

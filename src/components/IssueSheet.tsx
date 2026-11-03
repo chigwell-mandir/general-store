@@ -1,46 +1,60 @@
 import { useState } from 'react'
-import { AlertTriangle, ChevronDown, Radio } from 'lucide-react'
+import { AlertTriangle, X } from 'lucide-react'
 import type { Item, KitRequirement, Volunteer } from '../types'
 import { InsufficientStockError } from '../lib/backend'
 import { useStore } from '../lib/store'
 import { itemLabel } from '../lib/search'
+import { ItemPicker, stockLabel } from './ItemPicker'
+import { PersonSearch } from './PersonSearch'
 import { Sheet, Stepper, Swatch, useToast } from './ui'
-import { stockLabel } from './ItemPicker'
 
-/** Confirm an issue: quantity, optional note, optional radio details. */
-export function IssueSheet({ item, person, kit, onClose, onIssued }: {
-  item: Item
+/**
+ * Give an item: pick it (unless already chosen), set quantity, done.
+ * Extras (note, walkie details, which team member it's for) stay hidden until asked for.
+ */
+export function IssueSheet({ item: preset, person, kit, forTeam, onClose }: {
+  item?: Item
   person: Volunteer
   kit?: KitRequirement
+  /** The person is a zone lead collecting for their team: offer "for team member". */
+  forTeam?: boolean
   onClose: () => void
-  onIssued?: () => void
 }) {
-  const { act, data, d } = useStore()
+  const { act, d } = useStore()
   const toast = useToast()
+  const [item, setItem] = useState<Item | undefined>(preset)
   const [qty, setQty] = useState(kit?.qty ?? 1)
   const [note, setNote] = useState('')
-  const [unit, setUnit] = useState({ box: '', wt: '', channel: '', earpiece: false })
-  const [zoneLead, setZoneLead] = useState('')
-  const [more, setMore] = useState(false)
+  const [showNote, setShowNote] = useState(false)
+  const [unit, setUnit] = useState({ wt: '', channel: '' })
+  const [forPerson, setForPerson] = useState<Volunteer | null>(null)
+  const [pickingFor, setPickingFor] = useState(false)
   const [short, setShort] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
-  const onKit = kit ?? d.kitByVol.get(person.id)?.find((k) => k.item_id === item.id)
-  const defaultLead = d.zoneLeadForVolunteer(person).lead
+  const first = person.full_name.split(' ')[0]
 
+  if (!item) {
+    return (
+      <Sheet title={`Give to ${first}`} onClose={onClose}>
+        <ItemPicker onPick={(i) => { setItem(i); setQty(1) }} />
+      </Sheet>
+    )
+  }
+
+  const onKit = kit ?? d.kitByVol.get(person.id)?.find((k) => k.item_id === item.id)
   const submit = async (force = false) => {
     setBusy(true)
     try {
       const id = await act.issue({
         p_item_id: item.id, p_volunteer_id: person.id, p_qty: qty, p_note: note,
-        p_unit_box: unit.box, p_unit_wt_no: unit.wt, p_unit_channel: unit.channel,
-        p_unit_earpiece: item.unit_tracking && (unit.box || unit.wt || unit.channel || unit.earpiece) ? unit.earpiece : null,
-        p_zone_lead_id: zoneLead || null, p_kit_id: onKit?.id ?? null, p_force: force,
+        p_unit_wt_no: unit.wt, p_unit_channel: unit.channel,
+        p_kit_id: onKit?.id ?? null, p_force: force,
+        ...(forPerson ? { p_for_volunteer_id: forPerson.id } : {}),
       })
-      toast.ok(`Issued ${qty} × ${itemLabel(item)} to ${person.full_name.split(' ')[0]}`, {
+      toast.ok(`Gave ${qty} × ${itemLabel(item)} to ${first}${forPerson ? ` for ${forPerson.full_name.split(' ')[0]}` : ''}`, {
         label: 'Undo',
-        run: () => act.voidIssue(id).then(() => toast.ok('Issue cancelled')).catch(toast.err),
+        run: () => act.voidIssue(id).then(() => toast.ok('Undone')).catch(toast.err),
       })
-      onIssued?.()
       onClose()
     } catch (e) {
       if (e instanceof InsufficientStockError) setShort(e.available)
@@ -53,62 +67,50 @@ export function IssueSheet({ item, person, kit, onClose, onIssued }: {
   return (
     <Sheet
       title={<span className="row"><Swatch category={item.category} name={item.name} />{itemLabel(item)}</span>}
-      subtitle={`${item.category} · ${stockLabel(item)} · ${item.returnable ? 'must be returned' : 'consumable — not expected back'}`}
+      subtitle={`${stockLabel(item)}${item.returnable ? '' : ' · not expected back'}`}
       onClose={onClose}
     >
       <div className="stack">
         <div className="between">
-          <div>
-            <div className="label">Quantity</div>
-            {onKit ? <div className="hint">On their confirmed kit ({onKit.qty})</div> : <div className="hint">Extra issue — not on their confirmed kit</div>}
-          </div>
+          <span className="label">How many?</span>
           <Stepper value={qty} onChange={(n) => { setQty(n); setShort(null) }} />
         </div>
 
-        {item.unit_tracking && (
-          <fieldset className="card card-pad" style={{ margin: 0, boxShadow: 'none', background: 'var(--surface-2)' }}>
-            <legend className="section-title" style={{ padding: '0 6px' }}><Radio size={14} /> Radio details (optional)</legend>
-            <div className="grid-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <label className="field"><span className="label">WT number</span><input className="input" value={unit.wt} onChange={(e) => setUnit({ ...unit, wt: e.target.value })} inputMode="numeric" /></label>
-              <label className="field"><span className="label">Box</span><input className="input" value={unit.box} onChange={(e) => setUnit({ ...unit, box: e.target.value })} /></label>
-              <label className="field"><span className="label">Channel</span><input className="input" value={unit.channel} onChange={(e) => setUnit({ ...unit, channel: e.target.value })} /></label>
-              <label className="check" style={{ alignSelf: 'end' }}><input type="checkbox" checked={unit.earpiece} onChange={(e) => setUnit({ ...unit, earpiece: e.target.checked })} /> Earpiece</label>
+        {forTeam && (
+          forPerson ? (
+            <div className="between chip-line">
+              <span>For <strong>{forPerson.full_name}</strong></span>
+              <button className="icon-btn" onClick={() => setForPerson(null)} aria-label="Remove team member"><X /></button>
             </div>
-          </fieldset>
+          ) : pickingFor ? (
+            <PersonSearch compact allowAdd={false} placeholder="Which team member is it for?" onSelect={(v) => { setForPerson(v); setPickingFor(false) }} />
+          ) : null
         )}
-
-        <label className="field">
-          <span className="label">Note (optional)</span>
-          <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder={onKit ? 'e.g. swapped size' : 'e.g. why this extra item is needed'} />
-        </label>
-
-        <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start', marginLeft: -8 }} onClick={() => setMore(!more)} aria-expanded={more}>
-          <ChevronDown style={{ rotate: more ? '180deg' : '0deg', transition: 'rotate 150ms' }} /> Escalate to a different zone lead
-        </button>
-        {more && (
-          <label className="field">
-            <span className="label">Zone lead for this item</span>
-            <select className="select" value={zoneLead} onChange={(e) => setZoneLead(e.target.value)}>
-              <option value="">Default{defaultLead ? ` — ${defaultLead.name}` : ' (none set for their department)'}</option>
-              {data.zone_leads.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
-            </select>
-          </label>
+        {item.unit_tracking && (
+          <div className="row">
+            <input className="input" placeholder="WT no. (optional)" inputMode="numeric" value={unit.wt} onChange={(e) => setUnit({ ...unit, wt: e.target.value })} />
+            <input className="input" placeholder="Channel (optional)" value={unit.channel} onChange={(e) => setUnit({ ...unit, channel: e.target.value })} />
+          </div>
         )}
+        {showNote && <input className="input" placeholder="Note" value={note} onChange={(e) => setNote(e.target.value)} autoFocus />}
+
+        <div className="row-wrap">
+          {forTeam && !forPerson && !pickingFor && <button className="btn btn-ghost btn-sm" onClick={() => setPickingFor(true)}>+ For a team member</button>}
+          {!showNote && <button className="btn btn-ghost btn-sm" onClick={() => setShowNote(true)}>+ Note</button>}
+          {!preset && <button className="btn btn-ghost btn-sm" onClick={() => setItem(undefined)}>Change item</button>}
+        </div>
 
         {short !== null && (
           <div className="banner banner-warn" role="alert">
             <AlertTriangle />
-            <div className="grow">
-              <strong>Only {short} left according to the stock count.</strong> If you are physically holding the item, the count is wrong — you can still issue it (it will be logged).
-            </div>
+            <span>Only {short} left by the stock count. If you’re holding it, the count is off — you can still give it.</span>
           </div>
         )}
       </div>
       <div className="sheet-foot">
-        <button className="btn" onClick={onClose}>Cancel</button>
         {short !== null
-          ? <button className="btn btn-primary" disabled={busy} onClick={() => submit(true)}>Issue anyway</button>
-          : <button className="btn btn-primary btn-lg" data-autofocus disabled={busy} onClick={() => submit()}>Issue {qty}</button>}
+          ? <button className="btn btn-primary btn-lg" disabled={busy} onClick={() => submit(true)}>Give anyway</button>
+          : <button className="btn btn-primary btn-lg" data-autofocus disabled={busy} onClick={() => submit()}>Give {qty}</button>}
       </div>
     </Sheet>
   )

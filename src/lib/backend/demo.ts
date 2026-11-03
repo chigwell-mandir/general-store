@@ -197,8 +197,10 @@ export function createDemoBackend(): Backend {
         note: clean(a.p_note), unit_box: clean(a.p_unit_box), unit_wt_no: clean(a.p_unit_wt_no),
         unit_channel: clean(a.p_unit_channel), unit_earpiece: a.p_unit_earpiece ?? null,
         zone_lead_id: a.p_zone_lead_id ?? null, kit_id: a.p_kit_id ?? null,
+        for_volunteer_id: a.p_for_volunteer_id ?? null,
       })
-      const details = [clean(a.p_note), clean(a.p_unit_wt_no) && `WT ${clean(a.p_unit_wt_no)}`, a.p_force && 'issued beyond counted stock'].filter(Boolean).join(' · ')
+      const forName = a.p_for_volunteer_id ? db.volunteers.find((v) => v.id === a.p_for_volunteer_id)?.full_name : null
+      const details = [forName && `for ${forName}`, clean(a.p_note), clean(a.p_unit_wt_no) && `WT ${clean(a.p_unit_wt_no)}`, a.p_force && 'issued beyond counted stock'].filter(Boolean).join(' · ')
       log(db, { actor: a.p_issued_by, action: 'issue', volunteer_id: a.p_volunteer_id, item_id: item.id, qty: a.p_qty, details: details || null })
       write(db, ['items', 'issues', 'activity'])
       return id

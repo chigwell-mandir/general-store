@@ -67,6 +67,8 @@ export type Issue = {
   unit_earpiece: boolean | null
   zone_lead_id: string | null
   kit_id: string | null
+  /** When a zone lead collects for a team member: who it's really for. */
+  for_volunteer_id?: string | null
 }
 
 export type Checkin = {
@@ -127,4 +129,5 @@ export type IssueArgs = {
   p_zone_lead_id?: string | null
   p_kit_id?: string | null
   p_force?: boolean
+  p_for_volunteer_id?: string | null
 }

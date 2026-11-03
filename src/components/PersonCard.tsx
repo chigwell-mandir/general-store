@@ -1,47 +1,30 @@
 import { Link } from 'react-router'
-import { BadgeCheck, Building2, ChevronRight, IdCard, Phone, ShieldUser, Users, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { Volunteer } from '../types'
 import { useStore } from '../lib/store'
-import { clock } from '../lib/time'
-import { Avatar } from './ui'
 
-/** Who the desk is dealing with: mastersheet details at a glance. */
+/** Who the desk is dealing with — just the essentials. */
 export function PersonCard({ v, onClear, showProfileLink = true }: { v: Volunteer; onClear?: () => void; showProfileLink?: boolean }) {
   const { d } = useStore()
-  const zl = d.zoneLeadForVolunteer(v)
-  const checkin = d.checkinByVol.get(v.id)
+  const lead = d.zoneLeadForVolunteer(v).lead
+  const asLead = d.leadByVol.get(v.id)
 
   return (
-    <div className="card card-pad">
-      <div className="person">
-        <Avatar name={v.full_name} large />
-        <div className="grow">
-          <div className="between" style={{ alignItems: 'flex-start' }}>
-            <div className="grow">
-              <div className="person-name">{v.full_name}</div>
-              <div className="row-wrap" style={{ marginTop: 6 }}>
-                <span className="badge badge-brand"><IdCard /> {v.satsang_id ? `SID ${v.satsang_id}` : 'No Satsang ID'}</span>
-                {v.added_at_desk && <span className="badge badge-warn">Added at desk</span>}
-                {checkin && !checkin.checked_out_at && <span className="badge badge-ok"><BadgeCheck /> Checked in {clock(checkin.checked_in_at)}</span>}
-                {v.vcd && <span className="badge">VCD: {v.vcd}</span>}
-              </div>
-            </div>
-            {onClear && <button className="icon-btn" onClick={onClear} aria-label="Choose a different person"><X /></button>}
-          </div>
-          <div className="facts">
-            {v.department && <span><Building2 aria-hidden /> {v.department}</span>}
-            {v.mandal && <span><Users aria-hidden /> {v.mandal}</span>}
-            {v.phone && <span><Phone aria-hidden /> <a href={`tel:${v.phone.replace(/\s/g, '')}`}>{v.phone}</a></span>}
-            <span><ShieldUser aria-hidden /> Zone lead: {zl.lead ? <strong>{zl.lead.name}</strong> : <em>not set</em>}{zl.manual && ' (manual)'}</span>
-          </div>
-          {v.comments && <div className="note-box">{v.comments}</div>}
-        </div>
+    <div className="person-head">
+      <div className="grow" style={{ minWidth: 0 }}>
+        <h1 className="person-name">{v.full_name}</h1>
+        <p className="muted">
+          {[v.satsang_id ? `SID ${v.satsang_id}` : null, v.department].filter(Boolean).join(' · ')}
+          {v.phone && <> · <a href={`tel:${v.phone.replace(/\s/g, '')}`}>{v.phone}</a></>}
+        </p>
+        <p className="subtle">
+          {asLead ? 'Zone lead' : `Zone lead: ${lead?.name ?? 'not set'}`}
+          {v.added_at_desk && ' · added at desk'}
+          {showProfileLink && <> · <Link to={`/people/${v.id}`}>profile</Link></>}
+        </p>
+        {v.comments && <p className="subtle" style={{ marginTop: 4 }}>“{v.comments}”</p>}
       </div>
-      {showProfileLink && (
-        <Link to={`/people/${v.id}`} className="btn btn-ghost btn-sm" style={{ marginTop: 10, marginLeft: -8 }}>
-          Full profile & history <ChevronRight />
-        </Link>
-      )}
+      {onClear && <button className="icon-btn" onClick={onClear} aria-label="Choose someone else"><X /></button>}
     </div>
   )
 }
