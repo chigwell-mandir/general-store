@@ -80,7 +80,7 @@ export function IssuePage() {
                   <span className="grow">
                     <span className="tile-title row"><Swatch category={item.category} name={item.name} />{k.qty > 1 && `${k.qty} × `}{itemLabel(item)}</span>
                     <span className="tile-sub" style={{ display: 'block' }}>
-                      {done ? `Issued ${at ? clock(at) : ''}` : 'Tap to issue'} · confirmed by {k.confirmed_by}
+                      {done ? `Issued ${at ? clock(at) : ''}` : 'Tap to issue'}
                     </span>
                   </span>
                 </button>

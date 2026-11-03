@@ -30,7 +30,7 @@ export function KitRow({ k, showPerson = true }: { k: KitRequirement; showPerson
           {showPerson && v && <> <span className="muted" style={{ fontWeight: 500 }}>for</span> <Link to={`/people/${v.id}`} style={{ color: 'inherit' }}>{v.full_name}</Link></>}
           {status.done ? <span className="badge badge-ok">Issued</span> : status.issued > 0 ? <span className="badge badge-warn">{status.issued}/{k.qty} issued</span> : <span className="badge">Not yet issued</span>}
         </div>
-        <div className="hold-sub"><span>Confirmed by <strong>{k.confirmed_by}</strong></span>{v?.department && <span>{v.department}</span>}{k.note && <span>“{k.note}”</span>}</div>
+        <div className="hold-sub"><span>Zone lead: {d.zoneLeadForVolunteer(v).lead?.name ?? '—'}</span>{v?.department && <span>{v.department}</span>}{k.note && <span>“{k.note}”</span>}</div>
       </div>
       <button className="icon-btn hold-actions" disabled={busy} onClick={() => confirm(`Remove ${item ? itemLabel(item) : 'this item'} from ${v?.full_name ?? 'their'} kit?`) && run(() => act.removeKit(k), 'Kit removed')} aria-label="Remove from kit"><Trash2 /></button>
     </div>
@@ -52,14 +52,15 @@ export function KitPage() {
       if (!nq) return true
       const v = d.volById.get(k.volunteer_id)
       const it = d.itemById.get(k.item_id)
-      return nq.split(' ').every((w) => normalise(`${v?.full_name} ${v?.satsang_id} ${v?.department} ${it && itemLabel(it)} ${k.confirmed_by}`).includes(w))
+      return nq.split(' ').every((w) => normalise(`${v?.full_name} ${v?.satsang_id} ${v?.department} ${it && itemLabel(it)} ${d.zoneLeadForVolunteer(v).lead?.name ?? ''}`).includes(w))
     })
   }, [data.kit_requirements, d, q, pendingOnly, status])
 
   const groups = useMemo(() => {
     const m = new Map<string, KitRequirement[]>()
     for (const k of rows) {
-      const key = group === 'lead' ? k.confirmed_by : d.volById.get(k.volunteer_id)?.full_name ?? '?'
+      const v = d.volById.get(k.volunteer_id)
+      const key = group === 'lead' ? d.zoneLeadForVolunteer(v).lead?.name ?? 'No zone lead set' : v?.full_name ?? '?'
       if (!m.has(key)) m.set(key, [])
       m.get(key)!.push(k)
     }
@@ -84,18 +85,18 @@ export function KitPage() {
           <input className="search-input compact" placeholder="Filter by person, item or lead" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Filter kit" />
         </div>
         <div className="seg" role="group" aria-label="Group by">
-          <button aria-pressed={group === 'lead'} onClick={() => setGroup('lead')}>By lead</button>
+          <button aria-pressed={group === 'lead'} onClick={() => setGroup('lead')}>By zone lead</button>
           <button aria-pressed={group === 'person'} onClick={() => setGroup('person')}>By person</button>
         </div>
         <label className="check"><input type="checkbox" checked={pendingOnly} onChange={(e) => setPendingOnly(e.target.checked)} /> Not yet issued</label>
       </div>
 
       {groups.length === 0 && (
-        <div className="card"><Empty icon={ClipboardList} title={data.kit_requirements.length ? 'No matches' : 'No confirmed kit yet'}>When a lead confirms someone needs an item (e.g. “Vish needs a blue bib and an all-channel walkie — Chiragbhai”), add it here. It then shows up when issuing to that person.</Empty></div>
+        <div className="card"><Empty icon={ClipboardList} title={data.kit_requirements.length ? 'No matches' : 'No confirmed kit yet'}>When a zone lead confirms someone needs an item (e.g. “Vish needs a blue bib and an all-channel walkie”), add it here. It then shows up when issuing to that person.</Empty></div>
       )}
       {groups.map(([key, list]) => (
         <section key={key} className="card">
-          <div className="card-head"><h3>{group === 'lead' ? `Confirmed by ${key}` : key}</h3><span className="subtle">{list.filter((k) => status(k).done).length}/{list.length} issued</span></div>
+          <div className="card-head"><h3>{key}</h3><span className="subtle">{list.filter((k) => status(k).done).length}/{list.length} issued</span></div>
           <ul className="list">{list.map((k) => <li key={k.id}><KitRow k={k} showPerson={group === 'lead'} /></li>)}</ul>
         </section>
       ))}

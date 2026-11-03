@@ -6,9 +6,7 @@ import { ItemPicker } from './ItemPicker'
 import { PersonSearch } from './PersonSearch'
 import { Sheet, Stepper, Swatch, useAction } from './ui'
 
-const LAST_CONFIRMER = 'general-store-last-confirmer'
-
-/** Record that a named lead has confirmed a person needs an item. */
+/** Record an item a person will definitely need (confirmed by their zone lead). */
 export function KitAddSheet({ person: fixed, onClose }: { person?: Volunteer; onClose: () => void }) {
   const { act, d } = useStore()
   const { busy, run } = useAction()
@@ -16,13 +14,11 @@ export function KitAddSheet({ person: fixed, onClose }: { person?: Volunteer; on
   const [item, setItem] = useState<Item | null>(null)
   const [qty, setQty] = useState(1)
   const [note, setNote] = useState('')
-  const [by, setBy] = useState(() => { try { return localStorage.getItem(LAST_CONFIRMER) ?? '' } catch { return '' } })
 
   const save = async (another: boolean) => {
-    if (!person || !item || !by.trim()) return
-    try { localStorage.setItem(LAST_CONFIRMER, by.trim()) } catch { /* ignore */ }
+    if (!person || !item) return
     const ok = await run(async () => {
-      await act.addKit({ volunteer_id: person.id, item_id: item.id, qty, confirmed_by: by, note: note.trim() || null })
+      await act.addKit({ volunteer_id: person.id, item_id: item.id, qty, note: note.trim() || null })
       return true
     }, `Kit added for ${person.full_name.split(' ')[0]}`)
     if (!ok) return
@@ -30,13 +26,13 @@ export function KitAddSheet({ person: fixed, onClose }: { person?: Volunteer; on
   }
 
   return (
-    <Sheet title="Add confirmed kit" subtitle="A lead has confirmed this person will need this item." onClose={onClose}>
+    <Sheet title="Add confirmed kit" subtitle="An item this person will definitely need, confirmed by their zone lead." onClose={onClose}>
       <div className="stack-lg">
         {!person ? (
           <div className="field"><span className="label">Volunteer</span><PersonSearch compact onSelect={setPerson} /></div>
         ) : (
           <div className="between card card-pad" style={{ boxShadow: 'none' }}>
-            <div><div style={{ fontWeight: 750 }}>{person.full_name}</div><div className="subtle">{[person.satsang_id && `SID ${person.satsang_id}`, person.department].filter(Boolean).join(' · ')}</div></div>
+            <div><div style={{ fontWeight: 750 }}>{person.full_name}</div><div className="subtle">{[person.satsang_id && `SID ${person.satsang_id}`, person.department, `Zone lead: ${d.zoneLeadForVolunteer(person).lead?.name ?? 'not set'}`].filter(Boolean).join(' · ')}</div></div>
             {!fixed && <button className="btn btn-sm" onClick={() => setPerson(undefined)}>Change</button>}
           </div>
         )}
@@ -53,11 +49,6 @@ export function KitAddSheet({ person: fixed, onClose }: { person?: Volunteer; on
         {person && item && (
           <>
             <label className="field">
-              <span className="label">Confirmed by (lead) *</span>
-              <input className="input" value={by} onChange={(e) => setBy(e.target.value)} list="confirmers" placeholder="e.g. Chiragbhai" />
-              <datalist id="confirmers">{d.confirmers.map((c) => <option key={c} value={c} />)}</datalist>
-            </label>
-            <label className="field">
               <span className="label">Note (optional)</span>
               <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
@@ -65,8 +56,8 @@ export function KitAddSheet({ person: fixed, onClose }: { person?: Volunteer; on
         )}
       </div>
       <div className="sheet-foot">
-        <button className="btn" disabled={busy || !person || !item || !by.trim()} onClick={() => save(true)}>Save & add another</button>
-        <button className="btn btn-primary" disabled={busy || !person || !item || !by.trim()} onClick={() => save(false)}>Save</button>
+        <button className="btn" disabled={busy || !person || !item} onClick={() => save(true)}>Save & add another</button>
+        <button className="btn btn-primary" disabled={busy || !person || !item} onClick={() => save(false)}>Save</button>
       </div>
     </Sheet>
   )

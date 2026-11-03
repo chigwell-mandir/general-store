@@ -48,7 +48,7 @@ function issueRows(data: Snapshot, d: Derived): Row[] {
       Department: v?.department ?? '',
       Phone: v?.phone ?? '',
       'Zone lead': d.zoneLeadForIssue(i).lead?.name ?? '',
-      'Kit confirmed by': d.confirmerForIssue(i) ?? '',
+      'On confirmed kit': d.isOnKit(i) ? 'Yes' : '',
       'Issued by (desk)': i.issued_by,
       'Returned to (desk)': i.returned_by ?? '',
       'WT No.': i.unit_wt_no ?? '',
@@ -113,7 +113,7 @@ function outstandingRows(d: Derived): Row[] {
     return {
       'Zone lead': d.zoneLeadForIssue(i).lead?.name ?? 'No zone lead', Name: v?.full_name ?? '', SID: v?.satsang_id ?? '',
       Phone: v?.phone ?? '', Department: v?.department ?? '', Item: it ? itemLabel(it) : '', 'Still out': d.outQty(i),
-      'Issued at': at(i.issued_at), 'WT No.': i.unit_wt_no ?? '', 'Kit confirmed by': d.confirmerForIssue(i) ?? '',
+      'Issued at': at(i.issued_at), 'WT No.': i.unit_wt_no ?? '', 'On confirmed kit': d.isOnKit(i) ? 'Yes' : '',
     }
   }).sort((a, b) => String(a['Zone lead']).localeCompare(String(b['Zone lead'])) || String(a.Name).localeCompare(String(b.Name)))
 }
@@ -143,7 +143,7 @@ export function exportEverything(data: Snapshot, d: Derived) {
     ['Kit', data.kit_requirements.map((k) => {
       const v = d.volById.get(k.volunteer_id)
       const it = d.itemById.get(k.item_id)
-      return { Name: v?.full_name ?? '', SID: v?.satsang_id ?? '', Item: it ? itemLabel(it) : '', Qty: k.qty, 'Confirmed by': k.confirmed_by, Note: k.note ?? '' }
+      return { Name: v?.full_name ?? '', SID: v?.satsang_id ?? '', Item: it ? itemLabel(it) : '', Qty: k.qty, 'Zone lead': d.zoneLeadForVolunteer(v).lead?.name ?? '', Note: k.note ?? '' }
     })],
     ['People', data.volunteers.map((v) => ({
       Name: v.full_name, SID: v.satsang_id ?? '', Mandal: v.mandal ?? '', Phone: v.phone ?? '', Department: v.department ?? '',

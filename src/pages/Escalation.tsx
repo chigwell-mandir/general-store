@@ -13,21 +13,12 @@ type Group = { key: string; lead: string; phone: string | null; issues: Issue[] 
 const NO_LEAD = '__none__'
 const dateFmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
-function groupIssues(issues: Issue[], d: Derived, mode: 'zone' | 'confirmer'): Group[] {
+function groupIssues(issues: Issue[], d: Derived): Group[] {
   const m = new Map<string, Group>()
   for (const i of issues) {
-    let key: string, lead: string, phone: string | null = null
-    if (mode === 'zone') {
-      const z = d.zoneLeadForIssue(i).lead
-      key = z?.id ?? NO_LEAD
-      lead = z?.name ?? 'No zone lead set'
-      phone = z?.phone ?? null
-    } else {
-      const c = d.confirmerForIssue(i)
-      key = c ?? NO_LEAD
-      lead = c ?? 'Not on anyone’s confirmed kit'
-    }
-    if (!m.has(key)) m.set(key, { key, lead, phone, issues: [] })
+    const z = d.zoneLeadForIssue(i).lead
+    const key = z?.id ?? NO_LEAD
+    if (!m.has(key)) m.set(key, { key, lead: z?.name ?? 'No zone lead set', phone: z?.phone ?? null, issues: [] })
     m.get(key)!.issues.push(i)
   }
   return [...m.values()].sort((a, b) => (a.key === NO_LEAD ? 1 : b.key === NO_LEAD ? -1 : a.lead.localeCompare(b.lead)))
@@ -52,14 +43,13 @@ function leadText(g: Group, d: Derived) {
 }
 
 export function EscalationPage() {
-  const { d, act } = useStore()
+  const { d } = useStore()
   const toast = useToast()
   const now = useNow()
-  const [mode, setMode] = useState<'zone' | 'confirmer'>(d.event.escalation_mode)
   const [overdueOnly, setOverdueOnly] = useState(false)
 
   const issues = useMemo(() => d.outstanding.filter((i) => !overdueOnly || d.isOverdue(i, now)), [d, overdueOnly, now])
-  const groups = useMemo(() => groupIssues(issues, d, mode), [issues, d, mode])
+  const groups = useMemo(() => groupIssues(issues, d), [issues, d])
   const header = `*General Store — items not returned*\n_${d.event.name} · ${dateFmt.format(now)}_`
   const all = [header, ...groups.map((g) => leadText(g, d))].join('\n\n') + '\n\nPlease ask your team to return these to the General Store desk. Thank you!'
 
@@ -78,17 +68,10 @@ export function EscalationPage() {
       </div>
 
       <div className="row-wrap" style={{ alignItems: 'center' }}>
-        <div className="seg" role="group" aria-label="Group by">
-          <button aria-pressed={mode === 'zone'} onClick={() => setMode('zone')}>By zone lead</button>
-          <button aria-pressed={mode === 'confirmer'} onClick={() => setMode('confirmer')}>By confirming lead</button>
-        </div>
         <label className="check"><input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} /> Overdue only (after {d.event.overdue_time})</label>
-        {mode !== d.event.escalation_mode && (
-          <button className="btn btn-ghost btn-sm" onClick={() => act.saveEvent({ escalation_mode: mode }).then(() => toast.ok('Saved as default')).catch(toast.err)}>Make this the default</button>
-        )}
       </div>
 
-      {mode === 'zone' && groups.some((g) => g.key === NO_LEAD) && (
+      {groups.some((g) => g.key === NO_LEAD) && (
         <div className="banner banner-warn"><Megaphone /><span>Some people have no zone lead. Map their department to a lead in <Link to="/setup">Setup → Zone leads</Link>, or set one on their profile.</span></div>
       )}
 
@@ -105,7 +88,7 @@ export function EscalationPage() {
               </div>
               <div className="row">
                 {g.phone && <a className="btn btn-sm" href={`tel:${g.phone.replace(/\s/g, '')}`}><Phone /> Call</a>}
-                {mode === 'zone' && g.key !== NO_LEAD && <Link className="btn btn-sm" to={`/return?lead=${g.key}`}><CornerDownLeft /> Return</Link>}
+                {g.key !== NO_LEAD && <Link className="btn btn-sm" to={`/return?lead=${g.key}`}><CornerDownLeft /> Return</Link>}
                 <button className="btn btn-sm" onClick={() => copy(`${header}\n\n${text}`, g.lead)}><Copy /> Copy</button>
               </div>
             </div>

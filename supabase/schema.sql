@@ -10,9 +10,7 @@ create extension if not exists pgcrypto;
 create table events (
   id              int primary key,
   name            text not null,
-  overdue_time    text not null default '21:00',          -- HH:MM, local time
-  escalation_mode text not null default 'zone'
-                  check (escalation_mode in ('zone', 'confirmer'))
+  overdue_time    text not null default '21:00'           -- HH:MM, local time
 );
 insert into events (id, name) values (1, 'Diwali 2026');
 
@@ -71,7 +69,7 @@ create table kit_requirements (
   volunteer_id uuid not null references volunteers(id) on delete cascade,
   item_id      uuid not null references items(id) on delete cascade,
   qty          int not null default 1 check (qty > 0),
-  confirmed_by text not null,
+  confirmed_by text,                -- zone lead's name at the time (informational)
   note         text,
   created_at   timestamptz not null default now(),
   created_by   text

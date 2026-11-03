@@ -4,7 +4,6 @@ export type EventSettings = {
   id: number
   name: string
   overdue_time: string // "HH:MM"
-  escalation_mode: 'zone' | 'confirmer'
 }
 
 /** volunteer_id links the lead to their own directory entry (for their own items). */
@@ -44,7 +43,8 @@ export type KitRequirement = {
   volunteer_id: string
   item_id: string
   qty: number
-  confirmed_by: string
+  /** Legacy column: filled with the zone lead's name when the kit entry is added. */
+  confirmed_by: string | null
   note: string | null
   created_at: string
   created_by: string | null

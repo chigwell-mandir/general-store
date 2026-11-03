@@ -60,7 +60,7 @@ export function IssueSheet({ item, person, kit, onClose, onIssued }: {
         <div className="between">
           <div>
             <div className="label">Quantity</div>
-            {onKit ? <div className="hint">On confirmed kit ({onKit.qty}) · by {onKit.confirmed_by}</div> : <div className="hint">Extra issue — not on their confirmed kit</div>}
+            {onKit ? <div className="hint">On their confirmed kit ({onKit.qty})</div> : <div className="hint">Extra issue — not on their confirmed kit</div>}
           </div>
           <Stepper value={qty} onChange={(n) => { setQty(n); setShort(null) }} />
         </div>

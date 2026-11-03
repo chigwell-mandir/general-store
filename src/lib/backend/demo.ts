@@ -23,7 +23,7 @@ const minutesAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString()
 function seed(): Db {
   const db: Db = {
     _seq: 0,
-    events: [{ id: 1, name: 'Diwali 2026 (demo)', overdue_time: '21:00', escalation_mode: 'zone' }],
+    events: [{ id: 1, name: 'Diwali 2026 (demo)', overdue_time: '21:00' }],
     zone_leads: [],
     department_leads: [],
     volunteers: [],
@@ -49,15 +49,15 @@ function seed(): Db {
   ]
   const person = (name: string) => db.volunteers.find((v) => v.full_name === name)!
   const item = (cat: string, name: string) => db.items.find((i) => i.category === cat && i.name === name)!
-  const kit = (who: string, cat: string, name: string, by: string) => {
-    const k = { id: uid(), volunteer_id: person(who).id, item_id: item(cat, name).id, qty: 1, confirmed_by: by, note: null, created_at: now(), created_by: 'Demo' }
+  const kit = (who: string, cat: string, name: string) => {
+    const k = { id: uid(), volunteer_id: person(who).id, item_id: item(cat, name).id, qty: 1, confirmed_by: null, note: null, created_at: now(), created_by: 'Demo' }
     db.kit_requirements.push(k)
     return k
   }
-  kit('Vish Patel', 'Hi-Vis', 'Blue', 'Chiragbhai')
-  kit('Vish Patel', 'Walkies', 'Walkie talkie (all channel)', 'Chiragbhai')
-  const k3 = kit('Arjun Mistry', 'Hi-Vis', 'Yellow', 'Chiragbhai')
-  kit('Meera Desai', 'Equipment', 'Counter / clicker', 'Hetalben')
+  kit('Vish Patel', 'Hi-Vis', 'Blue')
+  kit('Vish Patel', 'Walkies', 'Walkie talkie (all channel)')
+  const k3 = kit('Arjun Mistry', 'Hi-Vis', 'Yellow')
+  kit('Meera Desai', 'Equipment', 'Counter / clicker')
 
   const give = (who: string, it: Item, qty: number, mins: number, extra: Partial<Issue> = {}) => {
     const iss: Issue = {

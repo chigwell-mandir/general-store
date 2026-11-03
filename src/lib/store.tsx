@@ -14,7 +14,7 @@ const EMPTY: Snapshot = {
   events: [], zone_leads: [], department_leads: [], volunteers: [], items: [],
   kit_requirements: [], issues: [], checkins: [], activity: [],
 }
-const DEFAULT_EVENT: EventSettings = { id: 1, name: 'General Store', overdue_time: '21:00', escalation_mode: 'zone' }
+const DEFAULT_EVENT: EventSettings = { id: 1, name: 'General Store', overdue_time: '21:00' }
 const DESK_KEY = 'general-store-desk-name'
 
 export type VolunteerInput = Pick<Volunteer, 'full_name' | 'satsang_id' | 'mandal' | 'phone' | 'department' | 'vcd' | 'comments'>
@@ -61,11 +61,8 @@ function useDerived(data: Snapshot) {
       if (i.zone_lead_id && zoneById.has(i.zone_lead_id)) return { lead: zoneById.get(i.zone_lead_id)!, manual: true }
       return zoneLeadForVolunteer(volById.get(i.volunteer_id))
     }
-    /** The lead who confirmed this item for this person, if it was on their kit list. */
-    const confirmerForIssue = (i: Issue) => {
-      const k = (i.kit_id && kitById.get(i.kit_id)) || kitByVol.get(i.volunteer_id)?.find((k) => k.item_id === i.item_id)
-      return k ? k.confirmed_by : null
-    }
+    /** Whether this issue was on the person's confirmed kit. */
+    const isOnKit = (i: Issue) => !!((i.kit_id && kitById.get(i.kit_id)) || kitByVol.get(i.volunteer_id)?.some((k) => k.item_id === i.item_id))
     const isOverdue = (i: Issue, now: number) => outQty(i) > 0 && now > deadlineFor(i.issued_at, event.overdue_time)
 
     const outByLead = new Map<string, Issue[]>()
@@ -95,13 +92,12 @@ function useDerived(data: Snapshot) {
 
     const departments = [...new Set(data.volunteers.map((v) => v.department?.trim()).filter(Boolean) as string[])]
       .sort((a, b) => a.localeCompare(b))
-    const confirmers = [...new Set(data.kit_requirements.map((k) => k.confirmed_by.trim()))].sort()
     const searchPeople = createPeopleSearch(data.volunteers)
 
     return {
       event, itemById, volById, zoneById, kitById, issuesByVol, kitByVol, checkinByVol,
       outstanding, outByItem, outQty, isReturnable, zoneLeadForVolunteer, zoneLeadForIssue,
-      confirmerForIssue, isOverdue, departments, confirmers, searchPeople, outByLead, searchLeads, leadByVol, leadItems,
+      isOnKit, isOverdue, departments, searchPeople, outByLead, searchLeads, leadByVol, leadItems,
     }
   }, [data])
 }
@@ -226,9 +222,10 @@ function useStoreValue() {
       return rows.length
     },
 
-    async addKit(k: Pick<KitRequirement, 'volunteer_id' | 'item_id' | 'qty' | 'confirmed_by' | 'note'>) {
-      await backend.insert('kit_requirements', [{ ...k, confirmed_by: k.confirmed_by.trim(), created_by: who }])
-      await log('kit_add', { volunteer_id: k.volunteer_id, item_id: k.item_id, qty: k.qty, details: `Confirmed by ${k.confirmed_by.trim()}` })
+    async addKit(k: Pick<KitRequirement, 'volunteer_id' | 'item_id' | 'qty' | 'note'>) {
+      const lead = d.zoneLeadForVolunteer(d.volById.get(k.volunteer_id)).lead
+      await backend.insert('kit_requirements', [{ ...k, confirmed_by: lead?.name ?? '', created_by: who }])
+      await log('kit_add', { volunteer_id: k.volunteer_id, item_id: k.item_id, qty: k.qty, details: k.note })
       await refresh(['kit_requirements', 'activity'])
     },
     async removeKit(k: KitRequirement) {

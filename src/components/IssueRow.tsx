@@ -17,7 +17,7 @@ export function IssueRow({ issue, now, showPerson, showReturn = true, hideLead }
   const left = d.outQty(issue)
   const returnable = item?.returnable ?? true
   const overdue = d.isOverdue(issue, now)
-  const confirmer = d.confirmerForIssue(issue)
+  const onKit = d.isOnKit(issue)
   const zl = d.zoneLeadForIssue(issue)
   const unit = [issue.unit_wt_no && `WT ${issue.unit_wt_no}`, issue.unit_box && `Box ${issue.unit_box}`, issue.unit_channel && `Ch ${issue.unit_channel}`, issue.unit_earpiece && 'earpiece'].filter(Boolean).join(' · ')
 
@@ -43,7 +43,7 @@ export function IssueRow({ issue, now, showPerson, showReturn = true, hideLead }
           <span>{returnable ? 'Out' : 'Issued'} {when(issue.issued_at)}{issue.returned_at && ` · back ${when(issue.returned_at)}`}</span>
           {unit && <span>{unit}</span>}
           {returnable && left > 0 && !hideLead && <span>Zone lead: {zl.lead?.name ?? '—'}</span>}
-          {confirmer && <span>Kit by {confirmer}</span>}
+          {onKit && <span>On confirmed kit</span>}
           {issue.note && <span>“{issue.note}”</span>}
         </div>
       </div>
