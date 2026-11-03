@@ -25,7 +25,21 @@ function useDerived(data: Snapshot) {
     const itemById = new Map(data.items.map((i) => [i.id, i]))
     const volById = new Map(data.volunteers.map((v) => [v.id, v]))
     const zoneById = new Map(data.zone_leads.map((z) => [z.id, z]))
-    const leadByVol = new Map(data.zone_leads.filter((z) => z.volunteer_id).map((z) => [z.volunteer_id!, z]))
+    // A zone lead is "the same person" as their linked directory entry — or, if not linked,
+    // the one directory entry with exactly the same name.
+    const byName = new Map<string, Volunteer[]>()
+    for (const v of data.volunteers) {
+      const k = normalise(v.full_name)
+      byName.set(k, [...(byName.get(k) ?? []), v])
+    }
+    const leadVol = new Map<string, string>()
+    for (const z of data.zone_leads) {
+      const sameName = byName.get(normalise(z.name))
+      const vid = z.volunteer_id ?? (sameName?.length === 1 ? sameName[0].id : null)
+      if (vid) leadVol.set(z.id, vid)
+    }
+    const leadVolId = (z: ZoneLead) => leadVol.get(z.id) ?? null
+    const leadByVol = new Map(data.zone_leads.filter((z) => leadVol.has(z.id)).map((z) => [leadVol.get(z.id)!, z]))
     const deptLead = new Map(data.department_leads.map((d) => [normalise(d.department), d.zone_lead_id]))
     const kitById = new Map(data.kit_requirements.map((k) => [k.id, k]))
 
@@ -77,7 +91,8 @@ function useDerived(data: Snapshot) {
       const words = normalise(q).split(' ').filter(Boolean)
       if (!words.length) return []
       return data.zone_leads.filter((z) => {
-        const v = z.volunteer_id ? volById.get(z.volunteer_id) : undefined
+        const vid = leadVolId(z)
+        const v = vid ? volById.get(vid) : undefined
         if (/^\d+$/.test(q)) return !!v?.satsang_id && v.satsang_id === q
         const name = normalise(`${z.name} ${v?.full_name ?? ''}`).split(' ')
         return words.every((w) => name.some((n) => n.startsWith(w)))
@@ -85,8 +100,9 @@ function useDerived(data: Snapshot) {
     }
     /** A zone lead's own outstanding items, and their team's (excluding their own). */
     const leadItems = (z: ZoneLead) => {
-      const own = z.volunteer_id ? outstanding.filter((i) => i.volunteer_id === z.volunteer_id) : []
-      const team = (outByLead.get(z.id) ?? []).filter((i) => i.volunteer_id !== z.volunteer_id)
+      const vid = leadVolId(z)
+      const own = vid ? outstanding.filter((i) => i.volunteer_id === vid) : []
+      const team = (outByLead.get(z.id) ?? []).filter((i) => i.volunteer_id !== vid)
       return { own, team }
     }
 
@@ -97,7 +113,7 @@ function useDerived(data: Snapshot) {
     return {
       event, itemById, volById, zoneById, kitById, issuesByVol, kitByVol, checkinByVol,
       outstanding, outByItem, outQty, isReturnable, zoneLeadForVolunteer, zoneLeadForIssue,
-      isOnKit, isOverdue, departments, searchPeople, outByLead, searchLeads, leadByVol, leadItems,
+      isOnKit, isOverdue, departments, searchPeople, outByLead, searchLeads, leadByVol, leadVolId, leadItems,
     }
   }, [data])
 }

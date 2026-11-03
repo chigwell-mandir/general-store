@@ -119,18 +119,27 @@ export function OutPage() {
         </section>
       )}
 
-      {view === 'lead' && groups.map((g) => (
+      {view === 'lead' && groups.map((g) => {
+        const lead = d.zoneById.get(g.key)
+        const leadVid = lead ? d.leadVolId(lead) : null
+        // The zone lead's own items always come first, then the team A–Z
+        const people = byPerson(g.issues).sort(([a], [b]) =>
+          a === leadVid ? -1 : b === leadVid ? 1 : (d.volById.get(a)?.full_name ?? '').localeCompare(d.volById.get(b)?.full_name ?? ''))
+        return (
         <FoldCard key={g.key} open={folds.isOpen(g.key)} onToggle={() => folds.toggle(g.key)}
           title={<h3>{g.lead}</h3>} count={g.issues.reduce((n, i) => n + d.outQty(i), 0)}
           actions={<button className="icon-btn" onClick={() => copy(`${header}\n\n${leadText(g, d)}`, g.lead)} aria-label={`Copy ${g.lead}’s list for WhatsApp`}><Copy /></button>}>
-          {byPerson(g.issues).map(([vid, list]) => (
+          {people.map(([vid, list]) => (
             <div key={vid} className="member">
-              <a href={`#/?p=${vid}`} className="member-name">{d.volById.get(vid)?.full_name ?? 'Unknown'}</a>
+              <a href={`#/?p=${vid}`} className="member-name">
+                {d.volById.get(vid)?.full_name ?? 'Unknown'}{vid === leadVid && <span className="tag" style={{ marginLeft: 8 }}>Zone lead</span>}
+              </a>
               <ul className="list">{list.map((i) => <li key={i.id}><IssueRow issue={i} now={now} /></li>)}</ul>
             </div>
           ))}
         </FoldCard>
-      ))}
+        )
+      })}
     </main>
   )
 }

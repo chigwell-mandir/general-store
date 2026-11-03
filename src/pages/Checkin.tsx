@@ -119,7 +119,12 @@ function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
       t.all.push(v)
       if (shown.has(v.id)) t.shown.push(v)
     }
-    for (const t of m.values()) t.shown.sort((a, b) => a.full_name.localeCompare(b.full_name))
+    // The zone lead first, then their team A–Z
+    for (const t of m.values()) {
+      const z = d.zoneById.get(t.key)
+      const leadVid = z ? d.leadVolId(z) : null
+      t.shown.sort((a, b) => (a.id === leadVid ? -1 : b.id === leadVid ? 1 : a.full_name.localeCompare(b.full_name)))
+    }
     return [...m.values()].filter((t) => t.shown.length).sort((a, b) => (a.key === NO_LEAD ? 1 : b.key === NO_LEAD ? -1 : a.name.localeCompare(b.name)))
   }, [data.volunteers, rows, d])
   const filtering = q.trim() !== '' || dept !== '' || status !== 'all'
@@ -228,7 +233,7 @@ function KaryakarList({ people, onOpen, showLead }: { people: Volunteer[]; onOpe
         return (
           <li key={v.id} className="hold">
             <button className="hold-main kk-name" onClick={() => onOpen(v)}>
-              <span className="hold-title">{v.full_name}</span>
+              <span className="hold-title">{v.full_name}{d.leadByVol.has(v.id) && <span className="tag" style={{ marginLeft: 8 }}>Zone lead</span>}</span>
               <span className="hold-sub">
                 <span>{[v.department, showLead && d.zoneLeadForVolunteer(v).lead?.name].filter(Boolean).join(' · ') || '—'}</span>
                 {c && <span>in {clock(c.checked_in_at)}{c.checked_out_at && ` · out ${clock(c.checked_out_at)}`}</span>}

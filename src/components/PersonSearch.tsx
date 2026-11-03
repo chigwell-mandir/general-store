@@ -32,7 +32,7 @@ export function PersonSearch({ onSelect, onSelectLead, autoFocus = true, placeho
   const leads = useMemo(() => (onSelectLead ? d.searchLeads(q) : []), [d, q, onSelectLead])
   // A linked zone lead appears once (as the lead), not again as a person
   const results = useMemo(() => {
-    const shown = new Set(leads.map((z) => z.volunteer_id).filter(Boolean))
+    const shown = new Set(leads.map((z) => d.leadVolId(z)).filter(Boolean))
     return d.searchPeople(q).filter((v) => !shown.has(v.id))
   }, [d, q, leads])
   const total = leads.length + results.length

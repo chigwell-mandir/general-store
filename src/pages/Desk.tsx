@@ -21,7 +21,7 @@ export function DeskPage() {
   const person = d.volById.get(params.get('p') ?? '')
   const lead = d.zoneById.get(params.get('lead') ?? '')
   const clear = () => setParams({})
-  const openLead = (z: ZoneLead) => setParams(z.volunteer_id ? { p: z.volunteer_id } : { lead: z.id })
+  const openLead = (z: ZoneLead) => { const vid = d.leadVolId(z); setParams(vid ? { p: vid } : { lead: z.id }) }
 
   if (person) return <PersonDesk person={person} onClear={clear} />
   if (lead) return <UnlinkedLead lead={lead} onClear={clear} />
