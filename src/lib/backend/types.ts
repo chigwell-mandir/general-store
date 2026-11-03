@@ -17,6 +17,8 @@ export interface Backend {
   upsert(table: TableName, rows: Row[], onConflict: string): Promise<void>
   update(table: TableName, match: Row, patch: Row): Promise<void>
   remove(table: TableName, match: Row): Promise<void>
+  /** Deletes every row in a table (used by Setup → Start fresh). */
+  clear(table: TableName): Promise<void>
 
   /** Returns the new issue's id (used for Undo). */
   issueItem(args: IssueArgs): Promise<string>

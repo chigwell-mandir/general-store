@@ -168,6 +168,12 @@ export function createDemoBackend(): Backend {
       write(db, [t, 'department_leads', 'volunteers', 'issues'])
     },
 
+    async clear(t) {
+      const db = read()
+      ;(db as Record<string, unknown>)[t] = []
+      write(db, [t])
+    },
+
     async issueItem(a: IssueArgs) {
       const db = read()
       if (!a.p_qty || a.p_qty < 1) throw new Error('Quantity must be at least 1')

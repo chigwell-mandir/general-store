@@ -21,6 +21,7 @@ export function SetupPage() {
       <VolunteerImportCard />
       <StockImportCard />
       <BackupCard />
+      <StartFreshCard />
       {mode === 'demo' && <DemoCard />}
     </main>
   )
@@ -274,6 +275,35 @@ function BackupCard() {
         <ExportButton kind="everything" label="Download full backup" />
         <Link to="/export" className="btn btn-ghost">More export options</Link>
       </div>
+    </section>
+  )
+}
+
+function StartFreshCard() {
+  const { data, act } = useStore()
+  const { busy, run } = useAction()
+  const [keepCatalogue, setKeepCatalogue] = useState(true)
+  const [keepCounts, setKeepCounts] = useState(false)
+  const [typed, setTyped] = useState('')
+  const counts = `${data.volunteers.length} people, ${data.issues.length} issues, ${data.checkins.length} check-ins, ${data.kit_requirements.length} kit entries, ${data.zone_leads.length} zone leads`
+  return (
+    <section className="card card-pad stack" style={{ borderColor: 'color-mix(in srgb, var(--danger) 35%, var(--line))' }}>
+      <h2 className="row" style={{ color: 'var(--danger)' }}><AlertTriangle size={20} /> Start fresh</h2>
+      <p className="subtle">
+        Permanently deletes everything for this event — {counts} and the whole history — ready to import the official
+        mastersheet. Every device sees the empty app straight away. <strong>This can’t be undone</strong>, so download a backup first.
+      </p>
+      <ExportButton kind="everything" label="1. Download full backup" />
+      <label className="check"><input type="checkbox" checked={keepCatalogue} onChange={(e) => setKeepCatalogue(e.target.checked)} /> Keep the item catalogue (item names and categories)</label>
+      {keepCatalogue && <label className="check" style={{ marginLeft: 32 }}><input type="checkbox" checked={keepCounts} onChange={(e) => setKeepCounts(e.target.checked)} /> Keep the current stock counts too</label>}
+      <label className="field">
+        <span className="label">2. Type WIPE to confirm</span>
+        <input className="input" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" style={{ maxWidth: 220 }} />
+      </label>
+      <button className="btn btn-danger" style={{ alignSelf: 'flex-start' }} disabled={busy || typed.trim().toUpperCase() !== 'WIPE'}
+        onClick={async () => { await run(() => act.wipe({ keepCatalogue, keepCounts: keepCatalogue && keepCounts }), 'Everything wiped — ready for fresh data'); setTyped('') }}>
+        <Trash2 /> 3. Wipe all data
+      </button>
     </section>
   )
 }

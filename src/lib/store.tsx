@@ -301,6 +301,18 @@ function useStoreValue() {
       else await backend.remove('department_leads', { department })
       await refresh(['department_leads'])
     },
+    /** Start fresh: removes people, issues, kit, check-ins, zone leads and history. */
+    async wipe(opts: { keepCatalogue: boolean; keepCounts: boolean }) {
+      for (const t of ['issues', 'kit_requirements', 'checkins', 'activity', 'department_leads', 'zone_leads', 'volunteers'] as TableName[]) {
+        await backend.clear(t)
+      }
+      if (!opts.keepCatalogue) await backend.clear('items')
+      else if (!opts.keepCounts) {
+        for (const i of data.items) await backend.update('items', { id: i.id }, { in_store: 0, track_stock: false })
+      }
+      await log('setting', { details: `Data wiped — fresh start (${opts.keepCatalogue ? `catalogue kept${opts.keepCounts ? ' with counts' : ', counts cleared'}` : 'catalogue removed'})` })
+      await refresh()
+    },
     async saveEvent(patch: Partial<EventSettings>) {
       await backend.update('events', { id: d.event.id }, patch)
       await log('setting', { details: Object.entries(patch).map(([k, v]) => `${k.replace('_', ' ')}: ${v}`).join(', ') })

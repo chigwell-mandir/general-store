@@ -73,6 +73,10 @@ export function createSupabaseBackend(url: string, key: string, deskEmail: strin
     async remove(table, match) {
       fail((await sb.from(table).delete().match(match)).error)
     },
+    async clear(table) {
+      const key = table === 'department_leads' ? 'department' : 'id'
+      fail((await sb.from(table).delete().not(key, 'is', null)).error)
+    },
 
     async issueItem(args: IssueArgs) {
       const { data, error } = await sb.rpc('issue_item', args)
