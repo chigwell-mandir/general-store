@@ -12,10 +12,20 @@ import { deadlineFor } from './time'
 
 const EMPTY: Snapshot = {
   events: [], zone_leads: [], department_leads: [], volunteers: [], items: [],
-  kit_requirements: [], issues: [], checkins: [], activity: [],
+  kit_requirements: [], issues: [], checkins: [], activity: [], desk_users: [],
 }
-const DEFAULT_EVENT: EventSettings = { id: 1, name: 'General Store', overdue_time: '21:00', escalation_mode: 'zone' }
+const DEFAULT_EVENT: EventSettings = { id: 1, name: 'General Store', overdue_time: '21:00', escalation_mode: 'zone', restrict_access: false }
 const DESK_KEY = 'general-store-desk-name'
+const DESK_USER_KEY = 'general-store-desk-user'
+
+export type Perm = 'items' | 'karyakar' | 'admin'
+
+/** PINs are stored hashed (salted with the desk user's id), never as typed. */
+export async function hashPin(userId: string, pin: string) {
+  const bytes = new TextEncoder().encode(`${userId}:${pin.trim()}`)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 export type VolunteerInput = Pick<Volunteer, 'full_name' | 'satsang_id' | 'mandal' | 'phone' | 'department' | 'vcd' | 'comments'>
 
@@ -116,7 +126,24 @@ function useStoreValue() {
   const [desk, setDeskState] = useState<string>(() => {
     try { return localStorage.getItem(DESK_KEY) ?? '' } catch { return '' }
   })
+  const [deskUserId, setDeskUserId] = useState<string>(() => {
+    try { return localStorage.getItem(DESK_USER_KEY) ?? '' } catch { return '' }
+  })
   const d = useDerived(data)
+
+  // Permissions: with restrictions off everyone can do everything (the original behaviour)
+  const restricted = !!d.event.restrict_access
+  const me = restricted ? data.desk_users.find((u) => u.id === deskUserId) ?? null : null
+  const can = (p: Perm) => {
+    if (!restricted) return true
+    if (!me) return false
+    if (me.is_admin) return true
+    return p === 'items' ? me.can_items : p === 'karyakar' ? me.can_karyakar : false
+  }
+  const setDeskUser = (id: string) => {
+    setDeskUserId(id)
+    try { if (id) localStorage.setItem(DESK_USER_KEY, id); else localStorage.removeItem(DESK_USER_KEY) } catch { /* private mode */ }
+  }
 
   const setDesk = (name: string) => {
     setDeskState(name)
@@ -171,7 +198,7 @@ function useStoreValue() {
     }
   }, [signedIn, refresh])
 
-  const who = desk || 'Desk'
+  const who = (restricted ? me?.name : desk) || desk || 'Desk'
   const log = (action: ActivityAction, f: Partial<Omit<Activity, 'id' | 'at' | 'action' | 'actor'>> = {}) =>
     backend.insert('activity', [{ actor: who, action, volunteer_id: null, item_id: null, qty: null, details: null, ...f }])
 
@@ -258,6 +285,64 @@ function useStoreValue() {
       await refresh(['checkins', 'activity'])
     },
 
+    /** Bulk check-in for everyone listed who isn't checked in yet. */
+    async checkInMany(vols: Volunteer[]) {
+      const fresh = vols.filter((v) => !d.checkinByVol.has(v.id))
+      if (!fresh.length) return 0
+      const nowIso = new Date().toISOString()
+      for (let i = 0; i < fresh.length; i += 500) {
+        await backend.insert('checkins', fresh.slice(i, i + 500).map((v) => ({ volunteer_id: v.id, checked_in_at: nowIso, checked_in_by: who })))
+      }
+      await backend.insert('activity', fresh.map((v) => ({ at: nowIso, actor: who, action: 'checkin', volunteer_id: v.id, item_id: null, qty: null, details: 'Karyakar checked in (bulk)' })))
+      await refresh(['checkins', 'activity'])
+      return fresh.length
+    },
+    /** Bulk check-out for everyone listed who is still checked in. */
+    async checkOutMany(vols: Volunteer[]) {
+      const open = vols.map((v) => d.checkinByVol.get(v.id)).filter((c): c is Checkin => !!c && !c.checked_out_at)
+      if (!open.length) return 0
+      const nowIso = new Date().toISOString()
+      await backend.updateMany('checkins', open.map((c) => c.id), { checked_out_at: nowIso, checked_out_by: who })
+      await backend.insert('activity', open.map((c) => ({ at: nowIso, actor: who, action: 'checkout', volunteer_id: c.volunteer_id, item_id: null, qty: null, details: 'Karyakar checked out (bulk)' })))
+      await refresh(['checkins', 'activity'])
+      return open.length
+    },
+
+    // ── Desk users & permissions ──
+    async signInDeskUser(id: string, pin: string) {
+      const u = data.desk_users.find((x) => x.id === id)
+      if (!u) throw new Error('Unknown desk volunteer')
+      if (!u.pin_hash) throw new Error('No PIN set for this person yet — ask an admin to set one')
+      if ((await hashPin(u.id, pin)) !== u.pin_hash) throw new Error('Wrong PIN')
+      setDeskUser(u.id)
+      setDesk(u.name)
+    },
+    signOutDeskUser() {
+      setDeskUser('')
+    },
+    async saveDeskUser(u: { id?: string; name: string; volunteer_id: string | null; can_items: boolean; can_karyakar: boolean; is_admin: boolean; pin?: string }) {
+      const id = u.id ?? uid()
+      const row: Record<string, unknown> = { name: u.name.trim(), volunteer_id: u.volunteer_id, can_items: u.can_items, can_karyakar: u.can_karyakar, is_admin: u.is_admin }
+      if (u.pin) row.pin_hash = await hashPin(id, u.pin)
+      if (u.id) await backend.update('desk_users', { id }, row)
+      else await backend.insert('desk_users', [{ id, ...row }])
+      await log('setting', { details: `Desk volunteer ${u.id ? 'updated' : 'added'}: ${u.name.trim()}${u.pin ? ' (PIN set)' : ''}` })
+      await refresh(['desk_users', 'activity'])
+      return id
+    },
+    async removeDeskUser(id: string) {
+      const u = data.desk_users.find((x) => x.id === id)
+      await backend.remove('desk_users', { id })
+      await log('setting', { details: `Desk volunteer removed: ${u?.name ?? id}` })
+      await refresh(['desk_users', 'activity'])
+    },
+    async setRestricted(on: boolean, signInAs?: string) {
+      if (on && signInAs) setDeskUser(signInAs)
+      await backend.update('events', { id: d.event.id }, { restrict_access: on })
+      await log('setting', { details: on ? 'Access restricted to listed desk volunteers' : 'Access open to everyone with the desk password' })
+      await refresh(['events', 'activity'])
+    },
+
     async addVolunteer(v: VolunteerInput): Promise<string> {
       const id = uid()
       await backend.insert('volunteers', [{ ...v, id, added_at_desk: true }])
@@ -320,7 +405,7 @@ function useStoreValue() {
     },
   }
 
-  return { data, d, ready, loadError, signedIn, desk, setDesk, refresh, act, mode: backend.mode }
+  return { data, d, ready, loadError, signedIn, desk, setDesk, refresh, act, mode: backend.mode, restricted, me, can }
 }
 
 type Store = ReturnType<typeof useStoreValue>

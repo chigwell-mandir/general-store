@@ -9,9 +9,10 @@ import { Sheet, Stepper, Swatch, useAction } from './ui'
 
 /** One issued line: what, how many, since when, with one-tap return. */
 export function IssueRow({ issue, now, showPerson, showReturn = true, hideLead }: { issue: Issue; now: number; showPerson?: boolean; showReturn?: boolean; hideLead?: boolean }) {
-  const { d, act } = useStore()
+  const { d, act, can } = useStore()
   const { busy, run } = useAction()
   const [sheet, setSheet] = useState(false)
+  if (!can('items')) showReturn = false
   const item = d.itemById.get(issue.item_id)
   const person = d.volById.get(issue.volunteer_id)
   const left = d.outQty(issue)
@@ -57,7 +58,7 @@ export function IssueRow({ issue, now, showPerson, showReturn = true, hideLead }
           <CornerDownLeft /> Return
         </button>
       )}
-      <button className="icon-btn" onClick={() => setSheet(true)} aria-label="More actions"><MoreHorizontal /></button>
+      {can('items') && <button className="icon-btn" onClick={() => setSheet(true)} aria-label="More actions"><MoreHorizontal /></button>}
       </div>
       {sheet && <IssueActions issue={issue} onClose={() => setSheet(false)} />}
     </div>

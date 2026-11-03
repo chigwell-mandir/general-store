@@ -52,7 +52,7 @@ function leadText(g: Group, d: Derived) {
 }
 
 export function EscalationPage() {
-  const { d, act } = useStore()
+  const { d, act, can } = useStore()
   const toast = useToast()
   const now = useNow()
   const [mode, setMode] = useState<'zone' | 'confirmer'>(d.event.escalation_mode)
@@ -105,7 +105,7 @@ export function EscalationPage() {
               </div>
               <div className="row">
                 {g.phone && <a className="btn btn-sm" href={`tel:${g.phone.replace(/\s/g, '')}`}><Phone /> Call</a>}
-                {mode === 'zone' && g.key !== NO_LEAD && <Link className="btn btn-sm" to={`/return?lead=${g.key}`}><CornerDownLeft /> Return</Link>}
+                {mode === 'zone' && g.key !== NO_LEAD && can('items') && <Link className="btn btn-sm" to={`/return?lead=${g.key}`}><CornerDownLeft /> Return</Link>}
                 <button className="btn btn-sm" onClick={() => copy(`${header}\n\n${text}`, g.lead)}><Copy /> Copy</button>
               </div>
             </div>

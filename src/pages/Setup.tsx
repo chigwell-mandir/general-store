@@ -9,6 +9,7 @@ import { downloadStockTemplate, parseStock, parseVolunteers, readSheets, type St
 import { Sheet, useAction, useToast } from '../components/ui'
 import { PersonSearch } from '../components/PersonSearch'
 import { ExportButton } from './Export'
+import { DeskUsersCard } from '../components/DeskUsersCard'
 import { Link } from 'react-router'
 
 export function SetupPage() {
@@ -17,6 +18,7 @@ export function SetupPage() {
     <main className="page">
       <div className="page-head"><div><h1>Setup & import</h1><p className="muted">Event settings, zone leads, mastersheet and stock imports, backups.</p></div></div>
       <EventSettingsCard />
+      <DeskUsersCard />
       <ZoneLeadsCard />
       <VolunteerImportCard />
       <StockImportCard />

@@ -12,7 +12,8 @@ create table events (
   name            text not null,
   overdue_time    text not null default '21:00',          -- HH:MM, local time
   escalation_mode text not null default 'zone'
-                  check (escalation_mode in ('zone', 'confirmer'))
+                  check (escalation_mode in ('zone', 'confirmer')),
+  restrict_access boolean not null default false           -- only listed desk users, by PIN
 );
 insert into events (id, name) values (1, 'Diwali 2026');
 
@@ -127,6 +128,18 @@ create table activity (
 );
 create index on activity (at desc);
 
+-- ── Desk volunteers and what each may do (used when restrict_access is on) ─
+create table desk_users (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,
+  volunteer_id uuid references volunteers(id) on delete set null,
+  pin_hash     text,
+  can_items    boolean not null default false,  -- issue / return items, kit
+  can_karyakar boolean not null default false,  -- karyakar check-in / out
+  is_admin     boolean not null default false,  -- everything, incl. stock, setup, wipe
+  created_at   timestamptz not null default now()
+);
+
 -- ── Security: only the desk login(s) in allowed_logins can read or write ─
 -- Add the shared desk email here (Table Editor → allowed_logins) — other accounts see nothing.
 create table allowed_logins (email text primary key);
@@ -141,7 +154,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['events','zone_leads','department_leads','volunteers','items',
-                           'kit_requirements','issues','checkins','activity'] loop
+                           'kit_requirements','issues','checkins','activity','desk_users'] loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy "desk access" on %I for all to authenticated using (is_desk()) with check (is_desk())', t);
     execute format('alter publication supabase_realtime add table %I', t);

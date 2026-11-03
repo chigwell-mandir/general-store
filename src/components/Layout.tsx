@@ -29,7 +29,8 @@ export function BrandMark() {
 }
 
 export function Layout() {
-  const { d, desk, mode, act } = useStore()
+  const { d, desk, mode, act, can, restricted, me } = useStore()
+  const deskName = (restricted ? me?.name : desk) || desk
   const now = useNow()
   const [theme, setTheme] = useTheme()
   const [deskSheet, setDeskSheet] = useState(false)
@@ -53,18 +54,18 @@ export function Layout() {
           <div><div className="brand-name">General Store</div><div className="brand-sub">{d.event.name}</div></div>
         </div>
         <div className="side-group">Desk</div>
-        {side('/', <PackageMinus />, 'Issue')}
-        {side('/return', <PackagePlus />, 'Return')}
+        {can('items') && side('/', <PackageMinus />, 'Issue')}
+        {can('items') && side('/return', <PackagePlus />, 'Return')}
         {side('/outstanding', <Clock />, 'Outstanding', outCount > 0 && <span className={`count badge ${overdue ? 'badge-danger' : ''}`}>{overdue || outCount}</span>)}
-        {side('/checkin', <BadgeCheck />, 'Karyakar check-in', onSite > 0 && <span className="count badge">{onSite}</span>)}
+        {can('karyakar') && side('/checkin', <BadgeCheck />, 'Karyakar check-in', onSite > 0 && <span className="count badge">{onSite}</span>)}
         <div className="side-group">Manage</div>
         {side('/dashboard', <LayoutDashboard />, 'Dashboard & stock')}
-        {side('/kit', <ClipboardList />, 'Kit allocation')}
+        {can('items') && side('/kit', <ClipboardList />, 'Kit allocation')}
         {side('/escalation', <Megaphone />, 'Escalation')}
         {side('/people', <Users />, 'People')}
         {side('/history', <History />, 'History')}
         {side('/export', <FileSpreadsheet />, 'Export to Excel')}
-        {side('/setup', <Settings />, 'Setup & import')}
+        {can('admin') && side('/setup', <Settings />, 'Setup & import')}
       </nav>
 
       <div className="main">
@@ -76,26 +77,36 @@ export function Layout() {
           <div className="topbar-spacer" />
           {mode === 'demo' && <span className="demo-pill" title="Data is stored on this device only">Demo</span>}
           <button className="icon-btn" onClick={() => setTheme(nextTheme[theme])} aria-label={`Theme: ${theme}. Change theme`} title={`Theme: ${theme}`}><ThemeIcon /></button>
-          <button className="desk-chip" onClick={() => setDeskSheet(true)} aria-label={`On desk: ${desk}. Change`}>
-            <Avatar name={desk || '?'} /><span>{desk || 'Set name'}</span>
+          <button className="desk-chip" onClick={() => setDeskSheet(true)} aria-label={`On desk: ${deskName}. Change`}>
+            <Avatar name={deskName || '?'} /><span>{deskName || 'Set name'}</span>
           </button>
         </header>
         <Outlet />
       </div>
 
-      <nav className="tabbar" aria-label="Main">
-        <NavLink to="/" end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><PackageMinus />Issue</NavLink>
-        <NavLink to="/return" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><PackagePlus />Return</NavLink>
+      <nav className="tabbar" aria-label="Main" style={{ gridTemplateColumns: `repeat(${2 + (can('items') ? 2 : 0) + (can('karyakar') ? 1 : 0)}, 1fr)` }}>
+        {can('items') && <NavLink to="/" end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><PackageMinus />Issue</NavLink>}
+        {can('items') && <NavLink to="/return" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><PackagePlus />Return</NavLink>}
         <NavLink to="/outstanding" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
           <Clock />Out{overdue > 0 && <span className="dot num">{overdue}</span>}
         </NavLink>
-        <NavLink to="/checkin" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><BadgeCheck /><span className="tab-label">Karyakar Check-in</span></NavLink>
+        {can('karyakar') && <NavLink to="/checkin" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><BadgeCheck /><span className="tab-label">Karyakar Check-in</span></NavLink>}
         <NavLink to="/more" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}><Menu />More</NavLink>
       </nav>
 
       {deskSheet && (
         <Sheet title="Who’s on the desk?" subtitle="Every issue and return is stamped with this name." onClose={() => setDeskSheet(false)}>
-          <DeskNameForm onDone={() => setDeskSheet(false)} />
+          {restricted && me ? (
+            <div className="stack">
+              <p><strong>{me.name}</strong></p>
+              <div className="row-wrap">
+                {me.is_admin && <span className="badge badge-brand">Everything (admin)</span>}
+                {!me.is_admin && me.can_items && <span className="badge">Items</span>}
+                {!me.is_admin && me.can_karyakar && <span className="badge">Karyakar check-in</span>}
+              </div>
+              <button className="btn" onClick={() => { act.signOutDeskUser(); setDeskSheet(false) }}><LogOut /> Switch person</button>
+            </div>
+          ) : <DeskNameForm onDone={() => setDeskSheet(false)} />}
           {mode === 'live' && (
             <button className="btn btn-ghost btn-sm" style={{ marginTop: 16 }} onClick={() => act.signOut()}><LogOut /> Sign this device out</button>
           )}

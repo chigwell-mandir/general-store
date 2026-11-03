@@ -16,6 +16,8 @@ export interface Backend {
   insert(table: TableName, rows: Row[]): Promise<void>
   upsert(table: TableName, rows: Row[], onConflict: string): Promise<void>
   update(table: TableName, match: Row, patch: Row): Promise<void>
+  /** Applies the same patch to every row whose id is in ids. */
+  updateMany(table: TableName, ids: string[], patch: Row): Promise<void>
   remove(table: TableName, match: Row): Promise<void>
   /** Deletes every row in a table (used by Setup → Start fresh). */
   clear(table: TableName): Promise<void>
