@@ -1,0 +1,1 @@
+{ "name": "General Store", "short_name": "Store", "start_url": "./", "display": "standalone", "background_color": "#FBF7F1", "theme_color": "#C2410C", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }

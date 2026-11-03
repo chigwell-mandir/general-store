@@ -1,0 +1,11 @@
+node_modules
+dist
+.env.local
+.env.*.local
+.DS_Store
+# Volunteer data must never be committed (the repo is public)
+*.xlsx
+*.xls
+*.csv
+*.tsbuildinfo
+.claude/
