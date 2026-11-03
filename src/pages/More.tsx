@@ -3,16 +3,16 @@ import { ClipboardList, FileSpreadsheet, History, LayoutDashboard, Megaphone, Se
 import { useStore } from '../lib/store'
 
 export function MorePage() {
-  const { data, d, can } = useStore()
+  const { data, d } = useStore()
   const tiles = [
     { to: '/dashboard', icon: LayoutDashboard, title: 'Dashboard & stock', sub: `${data.items.filter((i) => i.active).length} items` },
     { to: '/escalation', icon: Megaphone, title: 'Escalation', sub: 'WhatsApp summary per lead' },
-    can('items') && { to: '/kit', icon: ClipboardList, title: 'Kit allocation', sub: `${data.kit_requirements.length} confirmed` },
+    { to: '/kit', icon: ClipboardList, title: 'Kit allocation', sub: `${data.kit_requirements.length} confirmed` },
     { to: '/people', icon: Users, title: 'People', sub: `${data.volunteers.length} volunteers` },
     { to: '/history', icon: History, title: 'History', sub: 'Full audit log' },
     { to: '/export', icon: FileSpreadsheet, title: 'Export to Excel', sub: 'Logs, check-ins, items' },
-    can('admin') && { to: '/setup', icon: Settings, title: 'Setup & import', sub: `${d.event.name}` },
-  ].filter((t): t is Exclude<typeof t, false> => !!t)
+    { to: '/setup', icon: Settings, title: 'Setup & import', sub: `${d.event.name}` },
+  ]
   return (
     <main className="page">
       <h1>More</h1>

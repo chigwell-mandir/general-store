@@ -5,7 +5,7 @@ import { TABLES } from '../../types'
 import { DEMO_PEOPLE, starterCatalogue } from '../seed'
 import { InsufficientStockError, type Backend } from './types'
 
-const KEY = 'general-store-demo-v5'
+const KEY = 'general-store-demo-v4'
 type Row = Record<string, unknown>
 type Db = Snapshot & { _seq: number }
 
@@ -23,8 +23,7 @@ const minutesAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString()
 function seed(): Db {
   const db: Db = {
     _seq: 0,
-    events: [{ id: 1, name: 'Diwali 2026 (demo)', overdue_time: '21:00', escalation_mode: 'zone', restrict_access: false }],
-    desk_users: [],
+    events: [{ id: 1, name: 'Diwali 2026 (demo)', overdue_time: '21:00', escalation_mode: 'zone' }],
     zone_leads: [],
     department_leads: [],
     volunteers: [],
@@ -104,7 +103,7 @@ export function createDemoBackend(): Backend {
     const r = { ...row }
     if (t === 'activity') { r.id = ++db._seq; r.at ??= now() }
     else if (t !== 'department_leads' && t !== 'events') r.id ??= uid()
-    if (t === 'volunteers' || t === 'zone_leads' || t === 'kit_requirements' || t === 'desk_users') r.created_at ??= now()
+    if (t === 'volunteers' || t === 'zone_leads' || t === 'kit_requirements') r.created_at ??= now()
     if (t === 'checkins') r.checked_in_at ??= now()
     return r
   }
@@ -121,7 +120,7 @@ export function createDemoBackend(): Backend {
 
     async load<T>(t: TableName) {
       const db = read()
-      return structuredClone(db[t] ?? []) as unknown as T[]
+      return structuredClone(db[t]) as unknown as T[]
     },
     subscribe(onChange) {
       if (!channel) return () => {}

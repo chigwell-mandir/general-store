@@ -16,7 +16,7 @@ export function useKitStatus() {
 }
 
 export function KitRow({ k, showPerson = true }: { k: KitRequirement; showPerson?: boolean }) {
-  const { d, act, can } = useStore()
+  const { d, act } = useStore()
   const { busy, run } = useAction()
   const status = useKitStatus()(k)
   const item = d.itemById.get(k.item_id)
@@ -32,7 +32,7 @@ export function KitRow({ k, showPerson = true }: { k: KitRequirement; showPerson
         </div>
         <div className="hold-sub"><span>Confirmed by <strong>{k.confirmed_by}</strong></span>{v?.department && <span>{v.department}</span>}{k.note && <span>“{k.note}”</span>}</div>
       </div>
-      {can('items') && <button className="icon-btn hold-actions" disabled={busy} onClick={() => confirm(`Remove ${item ? itemLabel(item) : 'this item'} from ${v?.full_name ?? 'their'} kit?`) && run(() => act.removeKit(k), 'Kit removed')} aria-label="Remove from kit"><Trash2 /></button>}
+      <button className="icon-btn hold-actions" disabled={busy} onClick={() => confirm(`Remove ${item ? itemLabel(item) : 'this item'} from ${v?.full_name ?? 'their'} kit?`) && run(() => act.removeKit(k), 'Kit removed')} aria-label="Remove from kit"><Trash2 /></button>
     </div>
   )
 }

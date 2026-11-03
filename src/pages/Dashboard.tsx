@@ -14,8 +14,7 @@ import { ExportButton } from './Export'
 export const isLow = (i: Item) => i.active && i.track_stock && (i.in_store === 0 || i.in_store <= i.low_threshold)
 
 export function DashboardPage() {
-  const { data, d, act, can } = useStore()
-  const admin = can('admin')
+  const { data, d, act } = useStore()
   const now = useNow()
   const { busy, run } = useAction()
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
@@ -52,10 +51,10 @@ export function DashboardPage() {
           <p className="muted">Live totals. “In store” is what should be on the shelves now.</p>
         </div>
         <div className="row-wrap">
-          {!admin ? null : !counting
+          {!counting
             ? <button className="btn" onClick={() => setCounting(true)}><ClipboardCheck /> Count stock</button>
             : <><button className="btn" onClick={() => { setCounting(false); setCounts({}) }}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={saveCounts}><Save /> Save counts</button></>}
-          {admin && <button className="btn" onClick={() => setEditing('new')}><Plus /> Add item</button>}
+          <button className="btn" onClick={() => setEditing('new')}><Plus /> Add item</button>
           <ExportButton kind="items" label="Export" />
         </div>
       </div>
@@ -81,7 +80,7 @@ export function DashboardPage() {
         <div className="card">
           <Empty icon={Sparkles} title="No items yet">
             <p>Start from the cleaned-up catalogue built from the 2025 sheet, or import a stock list in Setup.</p>
-            {admin && <button className="btn btn-primary" style={{ marginTop: 12 }} disabled={busy} onClick={() => run(() => act.addStarterCatalogue(), 'Starter catalogue added')}>Add starter catalogue</button>}
+            <button className="btn btn-primary" style={{ marginTop: 12 }} disabled={busy} onClick={() => run(() => act.addStarterCatalogue(), 'Starter catalogue added')}>Add starter catalogue</button>
           </Empty>
         </div>
       )}
@@ -97,7 +96,7 @@ export function DashboardPage() {
                   const out = d.outByItem.get(i.id) ?? 0
                   const total = i.in_store + out
                   return (
-                    <tr key={i.id} className={counting || !admin ? '' : 'clickable'} onClick={() => admin && !counting && setEditing(i)}>
+                    <tr key={i.id} className={counting ? '' : 'clickable'} onClick={() => !counting && setEditing(i)}>
                       <td><span className="row" style={{ fontWeight: 650 }}><Swatch category={i.category} name={i.name} />{i.name}</span>{i.unit_tracking && <span className="subtle"> · per-radio optional</span>}</td>
                       <td className="r num">
                         {counting

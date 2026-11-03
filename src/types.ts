@@ -5,19 +5,6 @@ export type EventSettings = {
   name: string
   overdue_time: string // "HH:MM"
   escalation_mode: 'zone' | 'confirmer'
-  /** When true, only listed desk users (signed in with their PIN) can use the app, within their permissions. */
-  restrict_access: boolean
-}
-
-export type DeskUser = {
-  id: string
-  name: string
-  volunteer_id: string | null
-  pin_hash: string | null
-  can_items: boolean
-  can_karyakar: boolean
-  is_admin: boolean
-  created_at: string
 }
 
 /** volunteer_id links the lead to their own directory entry (for their own items). */
@@ -118,14 +105,13 @@ export type Snapshot = {
   issues: Issue[]
   checkins: Checkin[]
   activity: Activity[]
-  desk_users: DeskUser[]
 }
 
 export type TableName = keyof Snapshot
 
 export const TABLES: TableName[] = [
   'events', 'zone_leads', 'department_leads', 'volunteers', 'items',
-  'kit_requirements', 'issues', 'checkins', 'activity', 'desk_users',
+  'kit_requirements', 'issues', 'checkins', 'activity',
 ]
 
 export type IssueArgs = {

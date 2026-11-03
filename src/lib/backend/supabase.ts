@@ -45,8 +45,6 @@ export function createSupabaseBackend(url: string, key: string, deskEmail: strin
         const order = ORDER[table]
         if (order) q = q.order(order, { ascending: table !== 'activity' })
         const { data, error } = await q
-        // desk_users only exists once supabase/2-desk-permissions.sql has been run
-        if (error && table === 'desk_users' && /desk_users|42P01|PGRST205/.test(`${error.message} ${(error as { code?: string }).code}`)) return rows
         fail(error)
         rows.push(...((data ?? []) as T[]))
         if (!data || data.length < PAGE) return rows

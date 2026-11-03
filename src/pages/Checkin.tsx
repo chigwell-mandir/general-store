@@ -12,7 +12,7 @@ import { ExportButton } from './Export'
 
 /** On-the-day karyakar (KK) registration: check in on arrival, check out when leaving. Separate from kit. */
 export function CheckinPage() {
-  const { d, data, act, can } = useStore()
+  const { d, data, act } = useStore()
   const { busy, run } = useAction()
   const [person, setPerson] = useState<Volunteer | null>(null)
   const [tab, setTab] = useState<'in' | 'out' | 'all'>('in')
@@ -78,7 +78,7 @@ export function CheckinPage() {
                 </button>
               </>
             )}
-            {can('items') && <Link to={`/?p=${person.id}`} className="btn">Issue kit to {first(person)}</Link>}
+            <Link to={`/?p=${person.id}`} className="btn">Issue kit to {first(person)}</Link>
           </div>
         </div>
       )}

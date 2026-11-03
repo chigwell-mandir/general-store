@@ -3,8 +3,7 @@ import { AlertTriangle } from 'lucide-react'
 import { StoreProvider, useStore } from './lib/store'
 import { ToastProvider } from './components/ui'
 import { Layout, BrandMark } from './components/Layout'
-import { DeskNamePage, DeskUserSignInPage, LoginPage } from './pages/Login'
-import { Guard, Home } from './components/Guard'
+import { DeskNamePage, LoginPage } from './pages/Login'
 import { IssuePage } from './pages/Issue'
 import { ReturnPage } from './pages/Return'
 import { OutstandingPage } from './pages/Outstanding'
@@ -19,7 +18,7 @@ import { SetupPage } from './pages/Setup'
 import { ExportPage } from './pages/Export'
 
 function Gate() {
-  const { signedIn, ready, desk, loadError, refresh, restricted, me } = useStore()
+  const { signedIn, ready, desk, loadError, refresh } = useStore()
   if (signedIn === false) return <LoginPage />
   if (!ready) {
     return (
@@ -33,24 +32,23 @@ function Gate() {
       </div>
     )
   }
-  if (restricted && !me) return <DeskUserSignInPage />
-  if (!restricted && !desk) return <DeskNamePage />
+  if (!desk) return <DeskNamePage />
 
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Home issue={<IssuePage />} />} />
-        <Route path="return" element={<Guard perm="items"><ReturnPage /></Guard>} />
+        <Route index element={<IssuePage />} />
+        <Route path="return" element={<ReturnPage />} />
         <Route path="outstanding" element={<OutstandingPage />} />
-        <Route path="checkin" element={<Guard perm="karyakar"><CheckinPage /></Guard>} />
+        <Route path="checkin" element={<CheckinPage />} />
         <Route path="more" element={<MorePage />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="kit" element={<Guard perm="items"><KitPage /></Guard>} />
+        <Route path="kit" element={<KitPage />} />
         <Route path="escalation" element={<EscalationPage />} />
         <Route path="people" element={<PeoplePage />} />
         <Route path="people/:id" element={<ProfilePage />} />
         <Route path="history" element={<HistoryPage />} />
-        <Route path="setup" element={<Guard perm="admin"><SetupPage /></Guard>} />
+        <Route path="setup" element={<SetupPage />} />
         <Route path="export" element={<ExportPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

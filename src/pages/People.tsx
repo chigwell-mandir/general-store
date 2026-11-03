@@ -75,7 +75,7 @@ export function PeoplePage() {
 
 export function ProfilePage() {
   const { id } = useParams()
-  const { d, data, act, can } = useStore()
+  const { d, data, act } = useStore()
   const now = useNow()
   const navigate = useNavigate()
   const { run } = useAction()
@@ -97,15 +97,15 @@ export function ProfilePage() {
       <div className="row">
         <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)} style={{ marginLeft: -8 }}><ArrowLeft /> Back</button>
         <div className="grow" />
-        {can('items') && <Link className="btn btn-sm btn-primary" to={`/?p=${v.id}`}>Issue to {v.full_name.split(' ')[0]}</Link>}
-        {can('items') && out.length > 0 && <Link className="btn btn-sm" to={`/return?p=${v.id}`}>Return</Link>}
+        <Link className="btn btn-sm btn-primary" to={`/?p=${v.id}`}>Issue to {v.full_name.split(' ')[0]}</Link>
+        {out.length > 0 && <Link className="btn btn-sm" to={`/return?p=${v.id}`}>Return</Link>}
       </div>
       <PersonCard v={v} showProfileLink={false} />
 
       <div className="grid-2">
         <label className="field card card-pad">
           <span className="label">Zone lead (for escalation)</span>
-          <select className="select" disabled={!can('admin')} value={v.zone_lead_id ?? ''} onChange={(e) => {
+          <select className="select" value={v.zone_lead_id ?? ''} onChange={(e) => {
             const z = e.target.value || null
             run(() => act.updateVolunteer(v, { zone_lead_id: z }, `Zone lead set to ${z ? d.zoneById.get(z)?.name : 'department default'}`), 'Zone lead updated')
           }}>
@@ -116,14 +116,14 @@ export function ProfilePage() {
         </label>
         <div className="card card-pad between">
           <div><span className="label">Details</span><p className="subtle">{v.added_at_desk ? 'Added at the desk — not from the mastersheet.' : 'From the mastersheet import.'}</p></div>
-          {can('admin') && <button className="btn btn-sm" onClick={() => setEditing(true)}><Pencil /> Edit</button>}
+          <button className="btn btn-sm" onClick={() => setEditing(true)}><Pencil /> Edit</button>
         </div>
       </div>
 
       <section className="card">
         <div className="card-head">
           <span className="section-title"><ClipboardList size={14} /> Confirmed kit</span>
-          {can('items') && <button className="btn btn-sm" onClick={() => setAddingKit(true)}><Plus /> Add</button>}
+          <button className="btn btn-sm" onClick={() => setAddingKit(true)}><Plus /> Add</button>
         </div>
         {kit.length === 0 ? <p className="subtle card-pad">No confirmed kit.</p> : <ul className="list">{kit.map((k) => <li key={k.id}><KitRow k={k} showPerson={false} /></li>)}</ul>}
       </section>
