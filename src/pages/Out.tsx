@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Copy } from 'lucide-react'
 import type { Issue } from '../types'
 import { useStore, type Derived } from '../lib/store'
@@ -69,6 +69,10 @@ export function OutPage() {
     })
   }, [d, q, overdueOnly, now])
   const groups = useMemo(() => groupByLead(issues, d), [issues, d])
+  // A new search opens the matching groups once — they can still be folded afterwards
+  useEffect(() => {
+    folds.setAll(groups.map((g) => g.key), searching)
+  }, [q]) // eslint-disable-line react-hooks/exhaustive-deps
   const total = issues.reduce((n, i) => n + d.outQty(i), 0)
   const overdue = d.outstanding.filter((i) => d.isOverdue(i, now)).length
 
@@ -96,7 +100,7 @@ export function OutPage() {
         </div>
         <label className="check"><input type="checkbox" checked={overdueOnly} onChange={(e) => setOverdueOnly(e.target.checked)} /> Overdue{overdue > 0 && ` (${overdue})`}</label>
       </div>
-      {view === 'lead' && !searching && groups.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginTop: -8 }}><FoldAll keys={groups.map((g) => g.key)} folds={folds} /></div>}
+      {view === 'lead' && groups.length > 1 && <div className="row" style={{ justifyContent: 'flex-end', marginTop: -8 }}><FoldAll keys={groups.map((g) => g.key)} folds={folds} /></div>}
 
       {groups.length === 0 && <p className="subtle center" style={{ padding: 32 }}>{d.outstanding.length ? 'Nothing matches.' : 'Everything is back.'}</p>}
 
@@ -116,7 +120,7 @@ export function OutPage() {
       )}
 
       {view === 'lead' && groups.map((g) => (
-        <FoldCard key={g.key} open={searching || folds.isOpen(g.key)} onToggle={() => folds.toggle(g.key)}
+        <FoldCard key={g.key} open={folds.isOpen(g.key)} onToggle={() => folds.toggle(g.key)}
           title={<h3>{g.lead}</h3>} count={g.issues.reduce((n, i) => n + d.outQty(i), 0)}
           actions={<button className="icon-btn" onClick={() => copy(`${header}\n\n${leadText(g, d)}`, g.lead)} aria-label={`Copy ${g.lead}’s list for WhatsApp`}><Copy /></button>}>
           {byPerson(g.issues).map(([vid, list]) => (

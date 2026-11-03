@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { LogIn, LogOut, Undo2 } from 'lucide-react'
 import type { Volunteer } from '../types'
@@ -123,6 +123,11 @@ function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
     return [...m.values()].filter((t) => t.shown.length).sort((a, b) => (a.key === NO_LEAD ? 1 : b.key === NO_LEAD ? -1 : a.name.localeCompare(b.name)))
   }, [data.volunteers, rows, d])
   const filtering = q.trim() !== '' || dept !== '' || status !== 'all'
+  // When a filter changes, open the matching teams once — they can still be folded afterwards
+  const filterKey = `${q}|${dept}|${status}`
+  useEffect(() => {
+    folds.setAll(teams.map((t) => t.key), filtering)
+  }, [filterKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <section className="stack">
@@ -131,7 +136,7 @@ function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
           <button aria-pressed={view === 'team'} onClick={() => setView('team')}>By team</button>
           <button aria-pressed={view === 'all'} onClick={() => setView('all')}>Everyone</button>
         </div>
-        {view === 'team' && !filtering && <FoldAll keys={teams.map((t) => t.key)} folds={folds} />}
+        {view === 'team' && <FoldAll keys={teams.map((t) => t.key)} folds={folds} />}
       </div>
       <div className="row-wrap">
         <input className="search-input compact grow" style={{ minWidth: 160, paddingLeft: 16 }} placeholder="Search name, SID or department" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search karyakars" />
@@ -157,7 +162,7 @@ function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
       {view === 'team' && teams.map((t) => {
         const inNow = t.all.filter((v) => stateOf(v) === 'in').length
         return (
-          <FoldCard key={t.key} open={filtering || folds.isOpen(t.key)} onToggle={() => folds.toggle(t.key)}
+          <FoldCard key={t.key} open={folds.isOpen(t.key)} onToggle={() => folds.toggle(t.key)}
             title={<h3>{t.name}</h3>} count={`${inNow} / ${t.all.length} in`}>
             <BulkBar people={t.shown} label={filtering ? 'shown' : 'in this team'} />
             <KaryakarList people={t.shown} onOpen={onOpen} />
