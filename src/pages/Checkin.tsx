@@ -4,7 +4,7 @@ import { LogIn, LogOut, Undo2 } from 'lucide-react'
 import type { Volunteer } from '../types'
 import { useStore } from '../lib/store'
 import { clock, when } from '../lib/time'
-import { normalise } from '../lib/search'
+import { normalise, phoneQuery } from '../lib/search'
 import { AddPersonSheet } from '../components/AddPersonSheet'
 import { PersonCard } from '../components/PersonCard'
 import { FoldAll, FoldCard, useAction, useFolds } from '../components/ui'
@@ -100,11 +100,12 @@ function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
   const [adding, setAdding] = useState(false)
 
   const rows = useMemo(() => {
-    const words = normalise(q).split(' ').filter(Boolean)
+    const asPhone = phoneQuery(q)
+    const words = asPhone ? [asPhone] : normalise(q).split(' ').filter(Boolean)
     return [...data.volunteers]
       .filter((v) => !dept || v.department === dept)
       .filter((v) => status === 'all' || stateOf(v) === status)
-      .filter((v) => !words.length || words.every((w) => normalise(`${v.full_name} ${v.satsang_id ?? ''} ${v.department ?? ''}`).includes(w)))
+      .filter((v) => !words.length || words.every((w) => normalise(`${v.full_name} ${v.satsang_id ?? ''} ${v.department ?? ''} ${v.email ?? ''} ${v.phone?.replace(/\D/g, '') ?? ''}`).includes(w)))
       .sort((a, b) => a.full_name.localeCompare(b.full_name))
   }, [data.volunteers, d, q, dept, status]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -144,7 +145,7 @@ function KaryakarLists({ onOpen }: { onOpen: (v: Volunteer) => void }) {
         {view === 'team' && <FoldAll keys={teams.map((t) => t.key)} folds={folds} />}
       </div>
       <div className="row-wrap">
-        <input className="search-input compact grow" style={{ minWidth: 160, paddingLeft: 16 }} placeholder="Search name, SID or department" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search karyakars" />
+        <input className="search-input compact grow" style={{ minWidth: 160, paddingLeft: 16 }} placeholder="Search name, SID, phone, email or department" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search karyakars" />
         <select className="select" style={{ width: 'auto', maxWidth: '100%' }} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department">
           <option value="">All departments</option>
           {d.departments.map((x) => <option key={x} value={x}>{x}</option>)}

@@ -51,6 +51,7 @@ function issueRows(data: Snapshot, d: Derived): Row[] {
       'On confirmed kit': d.isOnKit(i) ? 'Yes' : '',
       'Issued by (desk)': i.issued_by,
       'Returned to (desk)': i.returned_by ?? '',
+      Size: i.item_size ?? '',
       'WT No.': i.unit_wt_no ?? '',
       Box: i.unit_box ?? '',
       Channel: i.unit_channel ?? '',
@@ -113,7 +114,7 @@ function outstandingRows(d: Derived): Row[] {
     return {
       'Zone lead': d.zoneLeadForIssue(i).lead?.name ?? 'No zone lead', Name: v?.full_name ?? '', SID: v?.satsang_id ?? '',
       Phone: v?.phone ?? '', Department: v?.department ?? '', Item: it ? itemLabel(it) : '', 'Still out': d.outQty(i),
-      'Issued at': at(i.issued_at), 'WT No.': i.unit_wt_no ?? '', 'On confirmed kit': d.isOnKit(i) ? 'Yes' : '',
+      'Issued at': at(i.issued_at), Size: i.item_size ?? '', 'WT No.': i.unit_wt_no ?? '', 'On confirmed kit': d.isOnKit(i) ? 'Yes' : '',
     }
   }).sort((a, b) => String(a['Zone lead']).localeCompare(String(b['Zone lead'])) || String(a.Name).localeCompare(String(b.Name)))
 }
@@ -146,7 +147,7 @@ export function exportEverything(data: Snapshot, d: Derived) {
       return { Name: v?.full_name ?? '', SID: v?.satsang_id ?? '', Item: it ? itemLabel(it) : '', Qty: k.qty, 'Zone lead': d.zoneLeadForVolunteer(v).lead?.name ?? '', Note: k.note ?? '' }
     })],
     ['People', data.volunteers.map((v) => ({
-      Name: v.full_name, SID: v.satsang_id ?? '', Mandal: v.mandal ?? '', Phone: v.phone ?? '', Department: v.department ?? '',
+      Name: v.full_name, SID: v.satsang_id ?? '', Mandal: v.mandal ?? '', Phone: v.phone ?? '', Email: v.email ?? '', Department: v.department ?? '',
       VCD: v.vcd ?? '', Comments: v.comments ?? '', 'Zone lead': d.zoneLeadForVolunteer(v).lead?.name ?? '',
       'Zone lead override': zl(v.zone_lead_id), 'Added at desk': v.added_at_desk ? 'Yes' : '',
     }))],

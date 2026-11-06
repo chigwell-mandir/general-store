@@ -147,13 +147,14 @@ export function ProfilePage() {
 function EditPersonSheet({ v, onClose }: { v: Volunteer; onClose: () => void }) {
   const { act, data } = useStore()
   const { busy, run } = useAction()
-  const [f, setF] = useState({ full_name: v.full_name, satsang_id: v.satsang_id ?? '', phone: v.phone ?? '', department: v.department ?? '', mandal: v.mandal ?? '', comments: v.comments ?? '' })
+  const [f, setF] = useState({ full_name: v.full_name, satsang_id: v.satsang_id ?? '', phone: v.phone ?? '', email: v.email ?? '', department: v.department ?? '', mandal: v.mandal ?? '', comments: v.comments ?? '' })
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
   const sidTaken = f.satsang_id.trim() && data.volunteers.find((x) => x.satsang_id === f.satsang_id.trim() && x.id !== v.id)
   const save = async () => {
     const ok = await run(async () => {
       await act.updateVolunteer(v, {
         full_name: f.full_name.trim(), satsang_id: f.satsang_id.trim() || null, phone: f.phone.trim() || null,
+        email: f.email.trim().toLowerCase() || null,
         department: f.department.trim() || null, mandal: f.mandal.trim() || null, comments: f.comments.trim() || null,
       }, 'Details edited')
       return true
@@ -170,6 +171,7 @@ function EditPersonSheet({ v, onClose }: { v: Volunteer; onClose: () => void }) 
           <label className="field"><span className="label">Department</span><input className="input" value={f.department} onChange={set('department')} /></label>
           <label className="field"><span className="label">Mandal</span><input className="input" value={f.mandal} onChange={set('mandal')} /></label>
         </div>
+        <label className="field"><span className="label">Email</span><input className="input" type="email" value={f.email} onChange={set('email')} /></label>
         <label className="field"><span className="label">Comments</span><input className="input" value={f.comments} onChange={set('comments')} /></label>
       </div>
     </Sheet>

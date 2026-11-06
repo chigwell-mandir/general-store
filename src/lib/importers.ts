@@ -43,7 +43,8 @@ const titleCase = (s: string) => s.replace(/\b\p{L}/gu, (m) => m.toUpperCase())
 
 export function cleanName(s: string) {
   const t = s.replace(/\s+/g, ' ').trim()
-  return t === t.toLowerCase() || t === t.toUpperCase() ? titleCase(t.toLowerCase()) : t.replace(/^\p{Ll}/u, (m) => m.toUpperCase())
+  if (t === t.toUpperCase()) return titleCase(t.toLowerCase())
+  return t.replace(/(^|[\s-])(\p{Ll})/gu, (_, a: string, b: string) => a + b.toUpperCase())
 }
 
 export function cleanSid(c: Cell): string | null {
@@ -94,6 +95,7 @@ export type VolunteerImport = {
 
 /** Finds the registrations sheet (any tab with a Name + Satsang ID header) and maps its columns. */
 export function parseVolunteers(sheets: { name: string; rows: Grid }[]): VolunteerImport {
+  const FULL_NAME = /full\s*name|volunteer name/
   const NAME = /full\s*name|^name$|volunteer name/
   const SID = /satsang|^sid$|satsang id/
   const sheet = sheets.find((s) => findHeader(s.rows, [NAME, SID]) >= 0)
@@ -101,10 +103,15 @@ export function parseVolunteers(sheets: { name: string; rows: Grid }[]): Volunte
   const h = findHeader(sheet.rows, [NAME, SID])
   const header = sheet.rows[h].map((c) => text(c).toLowerCase())
   const idx = {
-    name: col(header, NAME), sid: col(header, SID), mandal: col(header, /mandal/), vcd: col(header, /vcd/),
+    // Forms exports can have an empty "Name" column beside "Full Name", so prefer the latter
+    name: col(header, FULL_NAME) >= 0 ? col(header, FULL_NAME) : col(header, NAME),
+    sid: col(header, SID), mandal: col(header, /mandal/), vcd: col(header, /vcd/),
     phone: col(header, /contact|phone|mobile|number\?/), department: col(header, /department|dept/), comments: col(header, /comment|notes?$/),
   }
-  const columns = Object.entries(idx).filter(([, i]) => i >= 0).map(([k]) => k)
+  // The real address can be in any email column ("Email" may just say "anonymous"); the preferred one wins
+  const emailCols = header.map((h, i) => (/e-?mail/.test(h) ? i : -1)).filter((i) => i >= 0)
+    .sort((a, b) => Number(/preferred/.test(header[b])) - Number(/preferred/.test(header[a])))
+  const columns = [...Object.entries(idx).filter(([, i]) => i >= 0).map(([k]) => k), ...(emailCols.length ? ['email'] : [])]
   const warnings: string[] = []
   const seen = new Map<string, number>()
   const people: VolunteerInput[] = []
@@ -123,12 +130,20 @@ export function parseVolunteers(sheets: { name: string; rows: Grid }[]): Volunte
       mandal: cleanMandal(text(get(idx.mandal))),
       phone: cleanPhone(get(idx.phone)),
       department: cleanDepartment(text(get(idx.department))),
+      email: emailCols.map((i) => text(row[i]).toLowerCase()).find((e) => e.includes('@')) ?? null,
       vcd: idx.vcd >= 0 ? cleanYesNo(text(get(idx.vcd))) : null,
       comments: idx.comments >= 0 ? text(get(idx.comments)) || null : null,
     }
     if (sid && seen.has(sid)) {
-      warnings.push(`Satsang ID ${sid} appears twice (${people[seen.get(sid)!].full_name} / ${p.full_name}) — kept the later row`)
-      people[seen.get(sid)!] = p
+      const earlier = people[seen.get(sid)!]
+      if (normalise(earlier.full_name) === normalise(p.full_name)) {
+        warnings.push(`${p.full_name} is listed twice with Satsang ID ${sid} — kept the later row`)
+        people[seen.get(sid)!] = p
+        continue
+      }
+      // Two different people can't share an ID: keep both, the later one without it
+      warnings.push(`Satsang ID ${sid} is used by both ${earlier.full_name} and ${p.full_name} — ${p.full_name} imported without an ID, please check`)
+      people.push({ ...p, satsang_id: null })
       continue
     }
     if (!sid) warnings.push(`${p.full_name} has no Satsang ID — they can still be found by name`)

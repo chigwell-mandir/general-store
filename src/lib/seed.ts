@@ -16,9 +16,7 @@ const STARTER: SeedItem[] = [
   { category: 'Hi-Vis', name: 'Orange', returnable: true, count: 10, low: 3 },
   { category: 'Hi-Vis', name: 'Brown', returnable: true, count: 4, low: 1 },
 
-  { category: 'Walkies', name: 'Walkie talkie (all channel)', returnable: true, units: true },
-  { category: 'Walkies', name: 'Walkie talkie (single channel)', returnable: true, units: true },
-  { category: 'Walkies', name: 'Earpiece', returnable: true },
+  { category: 'Walkies', name: 'Walkie talkie', returnable: true, units: true },
 
   { category: 'Lanyards', name: 'Orange', returnable: true, count: 37 },
   { category: 'Lanyards', name: 'Yellow', returnable: true, count: 9 },

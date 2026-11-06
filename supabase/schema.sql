@@ -36,6 +36,7 @@ create table volunteers (
   full_name     text not null,
   mandal        text,
   phone         text,
+  email         text,
   department    text,
   vcd           text,
   comments      text,
@@ -95,6 +96,7 @@ create table issues (
   zone_lead_id  uuid references zone_leads(id) on delete set null, -- manual override
   kit_id        uuid references kit_requirements(id) on delete set null,
   for_volunteer_id uuid references volunteers(id) on delete set null, -- zone lead collected it for this team member
+  item_size     text,                                                 -- e.g. hi-vis size
   check (returned_qty between 0 and qty)
 );
 create index on issues (volunteer_id);
@@ -154,7 +156,7 @@ create or replace function issue_item(
   p_note text default null, p_unit_box text default null, p_unit_wt_no text default null,
   p_unit_channel text default null, p_unit_earpiece boolean default null,
   p_zone_lead_id uuid default null, p_kit_id uuid default null, p_force boolean default false,
-  p_for_volunteer_id uuid default null
+  p_for_volunteer_id uuid default null, p_item_size text default null
 ) returns issues language plpgsql as $$
 declare v_item items; v_issue issues; v_for text;
 begin
@@ -170,17 +172,20 @@ begin
   end if;
 
   insert into issues (item_id, volunteer_id, qty, issued_by, note, unit_box, unit_wt_no,
-                      unit_channel, unit_earpiece, zone_lead_id, kit_id, for_volunteer_id)
+                      unit_channel, unit_earpiece, zone_lead_id, kit_id, for_volunteer_id, item_size)
   values (p_item_id, p_volunteer_id, p_qty, p_issued_by, nullif(trim(p_note), ''), nullif(trim(p_unit_box), ''),
           nullif(trim(p_unit_wt_no), ''), nullif(trim(p_unit_channel), ''), p_unit_earpiece, p_zone_lead_id, p_kit_id,
-          p_for_volunteer_id)
+          p_for_volunteer_id, nullif(trim(p_item_size), ''))
   returning * into v_issue;
 
   select full_name into v_for from volunteers where id = p_for_volunteer_id;
   insert into activity (actor, action, volunteer_id, item_id, qty, details)
   values (p_issued_by, 'issue', p_volunteer_id, p_item_id, p_qty,
-          nullif(concat_ws(' · ', case when v_for is not null then 'for ' || v_for end, nullif(trim(p_note), ''),
+          nullif(concat_ws(' · ', case when nullif(trim(p_item_size), '') is not null then 'size ' || trim(p_item_size) end,
+                 case when v_for is not null then 'for ' || v_for end, nullif(trim(p_note), ''),
                  case when nullif(trim(p_unit_wt_no), '') is not null then 'WT ' || trim(p_unit_wt_no) end,
+                 case when nullif(trim(p_unit_channel), '') is not null then 'channel ' || trim(p_unit_channel) end,
+                 case when p_unit_earpiece then 'earpiece' end,
                  case when p_force then 'issued beyond counted stock' end), ''));
   return v_issue;
 end $$;

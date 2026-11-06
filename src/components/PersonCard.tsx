@@ -17,6 +17,7 @@ export function PersonCard({ v, onClear, showProfileLink = true }: { v: Voluntee
           {[v.satsang_id ? `SID ${v.satsang_id}` : null, v.department].filter(Boolean).join(' · ')}
           {v.phone && <> · <a href={`tel:${v.phone.replace(/\s/g, '')}`}>{v.phone}</a></>}
         </p>
+        {!showProfileLink && v.email && <p className="subtle">{v.email}</p>}
         <p className="subtle">
           {asLead ? 'Zone lead' : `Zone lead: ${lead?.name ?? 'not set'}`}
           {v.added_at_desk && ' · added at desk'}

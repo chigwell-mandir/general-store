@@ -5,7 +5,7 @@ import { TABLES } from '../../types'
 import { DEMO_PEOPLE, starterCatalogue } from '../seed'
 import { InsufficientStockError, type Backend } from './types'
 
-const KEY = 'general-store-demo-v4'
+const KEY = 'general-store-demo-v7'
 type Row = Record<string, unknown>
 type Db = Snapshot & { _seq: number }
 
@@ -55,7 +55,7 @@ function seed(): Db {
     return k
   }
   kit('Vish Patel', 'Hi-Vis', 'Blue')
-  kit('Vish Patel', 'Walkies', 'Walkie talkie (all channel)')
+  kit('Vish Patel', 'Walkies', 'Walkie talkie')
   const k3 = kit('Arjun Mistry', 'Hi-Vis', 'Yellow')
   kit('Meera Desai', 'Equipment', 'Counter / clicker')
 
@@ -72,10 +72,10 @@ function seed(): Db {
   give('Arjun Mistry', item('Hi-Vis', 'Yellow'), 1, 190, { kit_id: k3.id })
   give('Dev Raval', item('Hi-Vis', 'Yellow'), 2, 150)
   give('Kiran Joshi', item('Equipment', 'Counter / clicker'), 1, 95)
-  give('Rohan Parekh', item('Walkies', 'Walkie talkie (all channel)'), 1, 60, { unit_wt_no: '07', unit_box: '1', unit_channel: 'All', unit_earpiece: true })
+  give('Rohan Parekh', item('Walkies', 'Walkie talkie'), 1, 60, { unit_wt_no: '07', unit_box: '1', unit_channel: 'All channel', unit_earpiece: true })
   give('Priya Amin', item('Consumables', 'Gloves'), 2, 40)
   give('Rakesh Thakkar', item('Equipment', 'Megaphone'), 1, 120)
-  give('Rakesh Thakkar', item('Walkies', 'Walkie talkie (all channel)'), 1, 118, { unit_wt_no: '01' })
+  give('Rakesh Thakkar', item('Walkies', 'Walkie talkie'), 1, 118, { unit_wt_no: '01' })
   db.checkins.push({ id: uid(), volunteer_id: person('Arjun Mistry').id, checked_in_at: minutesAgo(200), checked_in_by: 'Demo desk', checked_out_at: null, checked_out_by: null })
   return db
 }
@@ -197,10 +197,10 @@ export function createDemoBackend(): Backend {
         note: clean(a.p_note), unit_box: clean(a.p_unit_box), unit_wt_no: clean(a.p_unit_wt_no),
         unit_channel: clean(a.p_unit_channel), unit_earpiece: a.p_unit_earpiece ?? null,
         zone_lead_id: a.p_zone_lead_id ?? null, kit_id: a.p_kit_id ?? null,
-        for_volunteer_id: a.p_for_volunteer_id ?? null,
+        for_volunteer_id: a.p_for_volunteer_id ?? null, item_size: clean(a.p_item_size),
       })
       const forName = a.p_for_volunteer_id ? db.volunteers.find((v) => v.id === a.p_for_volunteer_id)?.full_name : null
-      const details = [forName && `for ${forName}`, clean(a.p_note), clean(a.p_unit_wt_no) && `WT ${clean(a.p_unit_wt_no)}`, a.p_force && 'issued beyond counted stock'].filter(Boolean).join(' · ')
+      const details = [clean(a.p_item_size) && `size ${clean(a.p_item_size)}`, forName && `for ${forName}`, clean(a.p_note), clean(a.p_unit_wt_no) && `WT ${clean(a.p_unit_wt_no)}`, a.p_force && 'issued beyond counted stock'].filter(Boolean).join(' · ')
       log(db, { actor: a.p_issued_by, action: 'issue', volunteer_id: a.p_volunteer_id, item_id: item.id, qty: a.p_qty, details: details || null })
       write(db, ['items', 'issues', 'activity'])
       return id

@@ -21,9 +21,11 @@ export function IssueRow({ issue, now, showPerson, showReturn = true }: { issue:
   const label = item ? itemLabel(item) : 'Unknown item'
 
   const extras = [
+    issue.item_size && `size ${issue.item_size}`,
     forPerson && `for ${forPerson.full_name}`,
+    issue.unit_channel && (/^\d+$/.test(issue.unit_channel) ? `channel ${issue.unit_channel}` : issue.unit_channel),
     issue.unit_wt_no && `WT ${issue.unit_wt_no}`,
-    issue.unit_channel && `ch ${issue.unit_channel}`,
+    issue.unit_earpiece && 'earpiece',
     issue.note && `“${issue.note}”`,
   ].filter(Boolean).join(' · ')
 

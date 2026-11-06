@@ -17,6 +17,7 @@ export type Volunteer = {
   full_name: string
   mandal: string | null
   phone: string | null
+  email?: string | null
   department: string | null
   vcd: string | null
   comments: string | null
@@ -69,6 +70,8 @@ export type Issue = {
   kit_id: string | null
   /** When a zone lead collects for a team member: who it's really for. */
   for_volunteer_id?: string | null
+  /** Hi-vis size chosen when giving it. */
+  item_size?: string | null
 }
 
 export type Checkin = {
@@ -130,4 +133,5 @@ export type IssueArgs = {
   p_kit_id?: string | null
   p_force?: boolean
   p_for_volunteer_id?: string | null
+  p_item_size?: string | null
 }

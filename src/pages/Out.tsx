@@ -39,7 +39,7 @@ function leadText(g: Group, d: Derived) {
     for (const i of list) {
       const it = d.itemById.get(i.item_id)
       const forName = i.for_volunteer_id ? d.volById.get(i.for_volunteer_id)?.full_name : null
-      lines.push(`   – ${d.outQty(i)} × ${it ? itemLabel(it) : 'item'}${i.unit_wt_no ? ` (WT ${i.unit_wt_no})` : ''}${forName ? ` for ${forName}` : ''} · out ${when(i.issued_at)}`)
+      lines.push(`   – ${d.outQty(i)} × ${it ? itemLabel(it) : 'item'}${i.item_size ? ` (${i.item_size})` : ''}${i.unit_wt_no ? ` (WT ${i.unit_wt_no})` : ''}${forName ? ` for ${forName}` : ''} · out ${when(i.issued_at)}`)
     }
   }
   return lines.join('\n')

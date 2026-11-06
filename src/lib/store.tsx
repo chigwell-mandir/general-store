@@ -17,7 +17,7 @@ const EMPTY: Snapshot = {
 const DEFAULT_EVENT: EventSettings = { id: 1, name: 'General Store', overdue_time: '21:00' }
 const DESK_KEY = 'general-store-desk-name'
 
-export type VolunteerInput = Pick<Volunteer, 'full_name' | 'satsang_id' | 'mandal' | 'phone' | 'department' | 'vcd' | 'comments'>
+export type VolunteerInput = Pick<Volunteer, 'full_name' | 'satsang_id' | 'mandal' | 'phone' | 'email' | 'department' | 'vcd' | 'comments'>
 
 function useDerived(data: Snapshot) {
   return useMemo(() => {
@@ -294,9 +294,9 @@ function useStoreValue() {
       return open.length
     },
 
-    async addVolunteer(v: VolunteerInput): Promise<string> {
+    async addVolunteer(v: VolunteerInput, zoneLeadId: string | null = null): Promise<string> {
       const id = uid()
-      await backend.insert('volunteers', [{ ...v, id, added_at_desk: true }])
+      await backend.insert('volunteers', [{ ...v, id, added_at_desk: true, zone_lead_id: zoneLeadId }])
       await log('person_add', { volunteer_id: id, details: 'Added at desk (not in mastersheet)' })
       await refresh(['volunteers', 'activity'])
       return id

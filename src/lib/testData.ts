@@ -114,8 +114,8 @@ export async function loadTestData(file: File, dryRun = false) {
     const label = String(r[1] ?? '').trim()
     const all = /all/i.test(label) || /all/i.test(String(r[2] ?? ''))
     const outC = typeof r[7] === 'number' && r[7] >= 1 ? 'yes' : r[7] // "9", "11" = returned, time unknown
-    addIssue(item('Walkies', all ? 'Walkie talkie (all channel)' : 'Walkie talkie (single channel)'), p, 1, r[6], outC, {
-      unit_channel: filled(r[9]) ? String(Math.round(Number(r[9]))) : null,
+    addIssue(item('Walkies', 'Walkie talkie'), p, 1, r[6], outC, {
+      unit_channel: all ? 'All channel' : filled(r[9]) ? String(Math.round(Number(r[9]))) : null,
       unit_earpiece: /yes/i.test(String(r[8] ?? '')) ? true : null,
       note: !all && label ? label : (filled(r[8]) && !/yes/i.test(String(r[8])) ? String(r[8]) : null),
     })

@@ -13,6 +13,7 @@ export function AddPersonSheet({ initialName = '', initialSid = '', onClose, onA
   const { act, d, data } = useStore()
   const { busy, run } = useAction()
   const [f, setF] = useState({ full_name: initialName, satsang_id: initialSid, phone: '', department: '', mandal: '' })
+  const [zoneLead, setZoneLead] = useState('')
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
   const sidTaken = f.satsang_id.trim() && data.volunteers.find((v) => v.satsang_id === f.satsang_id.trim())
 
@@ -26,8 +27,8 @@ export function AddPersonSheet({ initialName = '', initialSid = '', onClose, onA
       mandal: f.mandal.trim() || null,
       vcd: null,
       comments: null,
-    }), `${f.full_name.trim()} added`)
-    if (id) onAdded({ id, full_name: f.full_name.trim(), satsang_id: f.satsang_id.trim() || null, phone: f.phone.trim() || null, department: f.department.trim() || null, mandal: f.mandal.trim() || null, vcd: null, comments: null, added_at_desk: true, zone_lead_id: null, created_at: new Date().toISOString() })
+    }, zoneLead || null), `${f.full_name.trim()} added`)
+    if (id) onAdded({ id, full_name: f.full_name.trim(), satsang_id: f.satsang_id.trim() || null, phone: f.phone.trim() || null, department: f.department.trim() || null, mandal: f.mandal.trim() || null, vcd: null, comments: null, added_at_desk: true, zone_lead_id: zoneLead || null, created_at: new Date().toISOString() })
   }
 
   return (
@@ -62,6 +63,13 @@ export function AddPersonSheet({ initialName = '', initialSid = '', onClose, onA
             </datalist>
           </label>
         </div>
+        <label className="field">
+          <span className="label">Zone lead</span>
+          <select className="select" value={zoneLead} onChange={(e) => setZoneLead(e.target.value)}>
+            <option value="">{data.zone_leads.length ? 'From their department' : 'No zone leads set up yet'}</option>
+            {[...data.zone_leads].sort((a, b) => a.name.localeCompare(b.name)).map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}
+          </select>
+        </label>
       </form>
       <div className="sheet-foot">
         <button className="btn" onClick={onClose} type="button">Cancel</button>
